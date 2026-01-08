@@ -33,6 +33,7 @@ const composeForm = document.getElementById("compose-form");
 const precompList = document.getElementById("precomp-list");
 const precompMeta = document.getElementById("precomp-meta");
 const editButton = document.getElementById("edit-precomp");
+const regenButton = document.getElementById("regen-precomp");
 const editRolesList = document.getElementById("edit-roles");
 const editSummary = document.getElementById("edit-summary");
 const balanceInfo = document.getElementById("balance-info");
@@ -137,7 +138,11 @@ const tempoTargets = {
   },
 };
 
-const alignPercentMin = 0.6666;
+const alignmentTargets = {
+  badRatio: 0.3333,
+  tolerance: 0.015,
+  neutralMaxRatio: 0.1667,
+};
 
 const readStorage = (key, fallback) => {
   try {
@@ -240,6 +245,8 @@ const computeDistribution = (composition, roles) => {
     elimination: 0,
     voyance: 0,
     protection: 0,
+    good: 0,
+    neutral: 0,
     goodNeutral: 0,
     bad: 0,
     total: 0,
@@ -252,7 +259,11 @@ const computeDistribution = (composition, roles) => {
     totals.total += entry.count;
     if (role.alignment === "mauvais") {
       totals.bad += entry.count;
+    } else if (role.alignment === "neutre") {
+      totals.neutral += entry.count;
+      totals.goodNeutral += entry.count;
     } else {
+      totals.good += entry.count;
       totals.goodNeutral += entry.count;
     }
     role.types.forEach((type) => {
@@ -297,39 +308,75 @@ const adjustBalanceWithVillagers = (composition, roles) => {
     return next - current;
   };
 
-  while ((balance > 1 || balance < -1) && safety < 200) {
-    const direction = balance > 1 ? -1 : 1;
-    const candidates = composition.roles
+  const getUnitWeight = (role, count) => {
+    const current = evaluateWeight(role.weight, count);
+    const next = evaluateWeight(role.weight, count + 1);
+    return next - current;
+  };
+
+  const canAddRole = (roleId, chosen) => {
+    const role = roles.find((item) => item.id === roleId);
+    if (!role) {
+      return false;
+    }
+    const current = chosen.get(roleId) || 0;
+    return role.repeatable ? true : current < 1;
+  };
+
+  const swapRole = (removeEntry, addRoleId) => {
+    removeEntry.count -= 1;
+    const existing = composition.roles.find((entry) => entry.roleId === addRoleId);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      composition.roles.push({ roleId: addRoleId, count: 1 });
+    }
+  };
+
+  while ((balance > 1 || balance < -1) && safety < 250) {
+    totals = computeDistribution(composition, roles);
+    const minTargets = buildTypeTargets(composition.players, composition.tempo);
+    const entries = composition.roles
       .map((entry) => {
         const role = roles.find((item) => item.id === entry.roleId);
-        if (!role || entry.count <= 0) {
+        if (!role) {
           return null;
         }
-        if (!canRemoveRole(role, totals, minTargets)) {
-          return null;
-        }
-        const delta = getDelta(role, entry.count, direction);
-        if ((balance > 1 && delta >= 0) || (balance < -1 && delta <= 0)) {
-          return { role, entry, delta };
-        }
-        return null;
+        return { entry, role };
       })
-      .filter(Boolean)
-      .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+      .filter(Boolean);
 
-    if (!candidates.length) {
+    const removeCandidates = entries
+      .filter(({ entry, role }) => entry.count > 0 && canRemoveRole(role, totals, minTargets))
+      .sort((a, b) => {
+        const weightA = getUnitWeight(a.role, a.entry.count - 1);
+        const weightB = getUnitWeight(b.role, b.entry.count - 1);
+        return balance > 1 ? weightB - weightA : weightA - weightB;
+      });
+
+    const addCandidates = roles
+      .filter((role) => canAddRole(role.id, new Map(composition.roles.map((item) => [item.roleId, item.count]))))
+      .sort((a, b) => {
+        const weightA = getUnitWeight(a, 0);
+        const weightB = getUnitWeight(b, 0);
+        return balance > 1 ? weightA - weightB : weightB - weightA;
+      });
+
+    if (!removeCandidates.length || !addCandidates.length) {
       break;
     }
-    const { entry, role } = candidates[0];
-    entry.count = Math.max(0, entry.count - 1);
-    if (role.types.length) {
-      totals = computeDistribution(composition, roles);
+
+    const removeEntry = removeCandidates[0].entry;
+    const addRole = addCandidates[0];
+    if (removeEntry.roleId === addRole.id) {
+      break;
     }
+    swapRole(removeEntry, addRole.id);
+    composition.roles = composition.roles.filter((entry) => entry.count > 0);
     balance = computeBalance(composition, roles);
     safety += 1;
   }
 
-  composition.roles = composition.roles.filter((entry) => entry.count > 0);
   const total = composition.roles.reduce((sum, roleEntry) => sum + roleEntry.count, 0);
   const diff = composition.players - total;
   if (diff !== 0) {
@@ -338,6 +385,67 @@ const adjustBalanceWithVillagers = (composition, roles) => {
       villager.count += diff;
     }
   }
+  return composition;
+};
+
+const enforceAlignmentTargets = (composition, roles) => {
+  let totals = computeDistribution(composition, roles);
+  const minBad = Math.max(
+    0,
+    Math.round(composition.players * (alignmentTargets.badRatio - alignmentTargets.tolerance))
+  );
+  const maxBad = Math.round(composition.players * (alignmentTargets.badRatio + alignmentTargets.tolerance));
+  const maxNeutral = Math.round(
+    composition.players * (alignmentTargets.neutralMaxRatio + alignmentTargets.tolerance)
+  );
+
+  const villager = composition.roles.find((entry) => entry.roleId === "villageois");
+  const badRole = roles.find((role) => role.id === "loup-garou") || roles.find((role) => role.alignment === "mauvais");
+
+  while (totals.bad > maxBad && villager) {
+    const badEntry = composition.roles.find((entry) => {
+      const role = roles.find((item) => item.id === entry.roleId);
+      return role && role.alignment === "mauvais" && entry.count > 0;
+    });
+    if (!badEntry) {
+      break;
+    }
+    badEntry.count -= 1;
+    villager.count += 1;
+    totals = computeDistribution(composition, roles);
+  }
+
+  while (totals.bad < minBad && villager && badRole) {
+    if (!badRole.repeatable && composition.roles.some((entry) => entry.roleId === badRole.id)) {
+      break;
+    }
+    if (villager.count <= 0) {
+      break;
+    }
+    villager.count -= 1;
+    const badEntry = composition.roles.find((entry) => entry.roleId === badRole.id);
+    if (badEntry) {
+      badEntry.count += 1;
+    } else {
+      composition.roles.push({ roleId: badRole.id, count: 1 });
+    }
+    totals = computeDistribution(composition, roles);
+  }
+
+  while (totals.neutral > maxNeutral && villager) {
+    const neutralEntry = composition.roles.find((entry) => {
+      const role = roles.find((item) => item.id === entry.roleId);
+      return role && role.alignment === "neutre" && entry.count > 0;
+    });
+    if (!neutralEntry) {
+      break;
+    }
+    neutralEntry.count -= 1;
+    villager.count += 1;
+    totals = computeDistribution(composition, roles);
+  }
+
+  composition.roles = composition.roles.filter((entry) => entry.count > 0);
   return composition;
 };
 
@@ -351,6 +459,15 @@ const labelTypes = (types) => {
 const labelModes = (modes) => modes.map((mode) => MODE_LABELS[mode]).join(", ");
 
 const roundPercent = (value) => Math.round(value * 1000) / 10;
+
+const shuffleArray = (array) => {
+  const copy = [...array];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+  }
+  return copy;
+};
 
 const getTempoTargets = (tempo, playerCount) =>
   tempo === "lente" ? tempoTargets.lente(playerCount) : tempoTargets[tempo];
@@ -447,7 +564,7 @@ const buildComposition = ({ players, mode, tempo }) => {
     if (!available.length || desired <= 0) {
       return;
     }
-    const weighted = [...available].sort(
+    const weighted = shuffleArray([...available]).sort(
       (a, b) => evaluateWeight(a.weight, 1) - evaluateWeight(b.weight, 1)
     );
     let remaining = desired - (Array.from(chosen).reduce((sum, [roleId, count]) => {
@@ -498,24 +615,14 @@ const balanceComposition = (composition, roles) => {
     }
   }
 
-  const totals = computeDistribution(composition, roles);
-  const minGoodNeutral = Math.ceil(composition.players * alignPercentMin);
-  if (totals.goodNeutral < minGoodNeutral) {
-    const villager = composition.roles.find((entry) => entry.roleId === "villageois");
-    const wolves = composition.roles.find((entry) => entry.roleId === "loup-garou");
-    if (villager && wolves && wolves.count > 1) {
-      const shift = Math.min(wolves.count - 1, minGoodNeutral - totals.goodNeutral);
-      wolves.count -= shift;
-      villager.count += shift;
-    }
-  }
-
+  enforceAlignmentTargets(composition, roles);
   const balance = computeBalance(composition, roles);
   if (balance < -1 || balance > 1) {
-    return adjustBalanceWithVillagers(composition, roles);
+    const adjusted = adjustBalanceWithVillagers(composition, roles);
+    return enforceAlignmentTargets(adjusted, roles);
   }
 
-  return adjustBalanceWithVillagers(composition, roles);
+  return enforceAlignmentTargets(composition, roles);
 };
 
 const updatePrecompView = (composition, roles) => {
@@ -539,10 +646,11 @@ const renderEditView = (composition) => {
   const balance = computeBalance(composition, roles);
   const totals = computeDistribution(composition, roles);
   const goodPercent = totals.total ? roundPercent(totals.goodNeutral / totals.total) : 0;
+  const neutralPercent = totals.total ? roundPercent(totals.neutral / totals.total) : 0;
   balanceInfo.innerHTML = `
     <strong>Valeur d'équilibrage :</strong> ${balance.toFixed(2)} (objectif entre -1 et +1)
     <br />
-    <strong>Alignements :</strong> ${goodPercent}% Bon/Neutre · ${roundPercent(totals.bad / totals.total)}% Mauvais
+    <strong>Alignements :</strong> ${goodPercent}% Bon/Neutre (Neutre ${neutralPercent}% max ~16.67) · ${roundPercent(totals.bad / totals.total)}% Mauvais
   `;
 
   editRolesList.innerHTML = "";
@@ -601,6 +709,16 @@ composeForm.addEventListener("submit", (event) => {
   currentDraft = composition;
   updatePrecompView(composition, getRoles());
   editButton.disabled = false;
+  regenButton.disabled = false;
+});
+
+regenButton.addEventListener("click", () => {
+  const players = Number(document.getElementById("player-count").value);
+  const mode = document.getElementById("game-mode").value;
+  const tempo = document.getElementById("game-tempo").value;
+  const composition = buildComposition({ players, mode, tempo });
+  currentDraft = composition;
+  updatePrecompView(composition, getRoles());
 });
 
 editButton.addEventListener("click", () => {
