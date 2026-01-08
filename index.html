@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Compositeur Loup-Garou</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <h1>Compositeur Loup-Garou</h1>
+      <p>Créez, ajustez et sauvegardez vos compositions de rôles.</p>
+    </div>
+    <nav class="main-nav">
+      <button class="nav-btn" data-target="home">Accueil</button>
+      <button class="nav-btn" data-target="create">Créer</button>
+      <button class="nav-btn" data-target="saved">Compositions</button>
+      <button class="nav-btn" data-target="roles">Base de rôles</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="home" class="screen active">
+      <div class="card hero">
+        <h2>Menu d'accueil</h2>
+        <p>Choisissez une action pour démarrer une nouvelle composition ou gérer votre base de données.</p>
+        <div class="hero-actions">
+          <button class="primary" data-target="create">Créer une composition</button>
+          <button data-target="saved">Accéder aux compositions</button>
+          <button data-target="roles">Éditer la base de données</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="create" class="screen">
+      <div class="grid">
+        <div class="card">
+          <h2>Création de composition</h2>
+          <form id="compose-form" class="form">
+            <label>
+              Nombre de joueurs
+              <input type="number" id="player-count" min="5" max="50" value="12" required />
+            </label>
+            <label>
+              Mode de jeu
+              <select id="game-mode">
+                <option value="clair">Clair (Thiercelieux)</option>
+                <option value="flou">Flou (Ultimate)</option>
+                <option value="obscur">Obscur (Jin-Rou DX)</option>
+              </select>
+            </label>
+            <label>
+              Tempo de partie
+              <select id="game-tempo">
+                <option value="express">Express</option>
+                <option value="equilibree" selected>Équilibrée</option>
+                <option value="lente">Lente</option>
+              </select>
+            </label>
+            <div class="actions">
+              <button type="submit" class="primary">Générer une pré-composition</button>
+              <button type="button" id="regen-precomp" class="ghost" disabled>Re-générer</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card" id="precomp-card">
+          <h3>Pré-composition proposée</h3>
+          <div id="precomp-meta" class="meta"></div>
+          <ul id="precomp-list" class="list"></ul>
+          <div class="actions">
+            <button id="edit-precomp" class="primary" disabled>Éditer la composition</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="edit" class="screen">
+      <div class="card">
+        <h2>Édition de composition</h2>
+        <div id="edit-summary" class="meta"></div>
+        <div class="balance" id="balance-info"></div>
+        <div class="split">
+          <div>
+            <h3>Rôles sélectionnés</h3>
+            <ul id="edit-roles" class="list"></ul>
+          </div>
+          <div>
+            <h3>Ajouter un rôle</h3>
+            <div id="available-roles" class="role-grid"></div>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="save-composition" class="primary">Sauvegarder</button>
+          <button data-target="create">Retour à la création</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="saved" class="screen">
+      <div class="card">
+        <h2>Compositions enregistrées</h2>
+        <div id="saved-list" class="saved-list"></div>
+        <div class="actions">
+          <button class="primary" data-target="create">Nouvelle composition</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="roles" class="screen">
+      <div class="card">
+        <h2>Base de données des rôles</h2>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Rôle</th>
+                <th>Alignement</th>
+                <th>Types</th>
+                <th>Poids</th>
+                <th>Modes</th>
+                <th>Multiples</th>
+                <th class="table-action">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="roles-table"></tbody>
+          </table>
+        </div>
+        <div class="actions">
+          <button type="button" id="export-roles" class="ghost">Exporter la base</button>
+          <label class="file-input ghost">
+            Importer une base
+            <input type="file" id="import-roles" accept="application/json" />
+          </label>
+        </div>
+        <h3 id="role-form-title">Ajouter un rôle</h3>
+        <form id="role-form" class="form">
+          <label>
+            Nom du rôle
+            <input type="text" id="role-name" required />
+          </label>
+          <label>
+            Alignement
+            <select id="role-alignment">
+              <option value="bon">Bon</option>
+              <option value="mauvais">Mauvais</option>
+              <option value="neutre">Neutre</option>
+            </select>
+          </label>
+          <fieldset id="role-types">
+            <legend>Type du rôle</legend>
+            <label><input type="checkbox" value="voyance" /> Voyance</label>
+            <label><input type="checkbox" value="elimination" /> Élimination</label>
+            <label><input type="checkbox" value="protection" /> Protection</label>
+          </fieldset>
+          <label>
+            Poids (N = quantité)
+            <input type="text" id="role-weight" placeholder="Ex: 2 - 0.5*N" required />
+          </label>
+          <label>
+            Description
+            <textarea id="role-description" rows="3"></textarea>
+          </label>
+          <label class="inline">
+            <input type="checkbox" id="role-repeatable" checked />
+            Peut apparaître plusieurs fois
+          </label>
+          <fieldset id="role-modes">
+            <legend>Modes de jeu</legend>
+            <label><input type="checkbox" value="clair" checked /> Clair</label>
+            <label><input type="checkbox" value="flou" checked /> Flou</label>
+            <label><input type="checkbox" value="obscur" checked /> Obscur</label>
+          </fieldset>
+          <div class="actions">
+            <button type="submit" class="primary" id="role-submit">Ajouter le rôle</button>
+            <button type="button" id="role-cancel" class="ghost" hidden>Annuler la modification</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <template id="saved-template">
+    <div class="saved-card">
+      <div>
+        <input class="saved-title" />
+        <div class="saved-meta"></div>
+      </div>
+      <div class="actions">
+        <button class="open">Éditer</button>
+        <button class="duplicate">Dupliquer</button>
+        <button class="delete">Supprimer</button>
+      </div>
+    </div>
+  </template>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>
