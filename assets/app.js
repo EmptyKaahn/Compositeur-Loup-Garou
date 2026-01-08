@@ -184,7 +184,7 @@ const balanceInfo = document.getElementById("balance-info");
 const availableRoles = document.getElementById("available-roles");
 const saveCompositionButton = document.getElementById("save-composition");
 const savedList = document.getElementById("saved-list");
-const rolesTable = document.getElementById("roles-table");
+const rolesCards = document.getElementById("roles-cards");
 const roleForm = document.getElementById("role-form");
 const roleFormTitle = document.getElementById("role-form-title");
 const roleSubmit = document.getElementById("role-submit");
@@ -316,9 +316,14 @@ const evaluateWeight = (formula, count) => {
   if (!sanitizeFormula(value)) {
     return 0;
   }
-  const expression = value.replace(/N/g, `${count}`);
+  const usesN = /N/.test(value);
+  const expression = usesN ? value.replace(/N/g, `${count}`) : value;
   try {
-    return Number(new Function(`return (${expression});`)());
+    const result = Number(new Function(`return (${expression});`)());
+    if (Number.isNaN(result)) {
+      return 0;
+    }
+    return usesN ? result : result * count;
   } catch (error) {
     return 0;
   }
@@ -754,7 +759,10 @@ const renderEditView = (composition) => {
       .filter(Boolean)
       .join(" · ");
     card.innerHTML = `
-      <strong>${role.name}</strong>
+      <div class="role-card-header">
+        <strong>${role.name}</strong>
+        <span class="role-weight">Poids ${role.weight}</span>
+      </div>
       <div class="meta">${labelTypes(role.types)} · ${ALIGN_LABELS[role.alignment]}${extra ? ` · ${extra}` : ""}</div>
       <p>${role.description || "Aucune description."}</p>
       <button data-role="${role.id}">Ajouter</button>
@@ -930,29 +938,29 @@ const renderSavedCompositions = () => {
   }
 };
 
-const renderRolesTable = () => {
+const renderRolesCards = () => {
   const roles = getRoles();
-  rolesTable.innerHTML = "";
+  rolesCards.innerHTML = "";
   roles.forEach((role) => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${role.name}${role.locked ? " 🔒" : ""}</td>
-      <td class="${role.alignment === "bon" ? "good" : "bad"}">${ALIGN_LABELS[role.alignment]}</td>
-      <td>${labelTypes(role.types)}</td>
-      <td>${role.handicap ? "Oui" : "Non"}</td>
-      <td>${role.wolf ? "Oui" : "Non"}</td>
-      <td>${role.weight}</td>
-      <td>${labelModes(role.modes)}</td>
-      <td class="table-action">
+    const card = document.createElement("div");
+    card.className = "role-db-card";
+    card.innerHTML = `
+      <div><strong>${role.name}${role.locked ? " 🔒" : ""}</strong></div>
+      <div class="meta-line">Alignement : <span class="${role.alignment === "bon" ? "good" : "bad"}">${ALIGN_LABELS[role.alignment]}</span></div>
+      <div class="meta-line">Types : ${labelTypes(role.types)}</div>
+      <div class="meta-line">Handicap : ${role.handicap ? "Oui" : "Non"} · Loup : ${role.wolf ? "Oui" : "Non"}</div>
+      <div class="meta-line">Poids : ${role.weight}</div>
+      <div class="meta-line">Modes : ${labelModes(role.modes)}</div>
+      <div class="role-db-actions">
         <button class="edit-button" type="button" data-role="${role.id}" aria-label="Éditer ${role.name}" ${
       role.locked ? "disabled" : ""
     }>✏️</button>
         <button class="delete-button" type="button" data-role="${role.id}" aria-label="Supprimer ${role.name}" ${
       role.locked ? "disabled" : ""
     }>🗑️</button>
-      </td>
+      </div>
     `;
-    rolesTable.appendChild(row);
+    rolesCards.appendChild(card);
   });
 };
 
@@ -1033,14 +1041,14 @@ roleForm.addEventListener("submit", (event) => {
   }
   writeStorage(STORAGE_KEYS.roles, ensureCoreRoles(normalizeRoles(roles)));
   resetRoleForm();
-  renderRolesTable();
+  renderRolesCards();
 });
 
 roleCancel.addEventListener("click", () => {
   resetRoleForm();
 });
 
-rolesTable.addEventListener("click", (event) => {
+rolesCards.addEventListener("click", (event) => {
   const target = event.target;
   if (!target.matches(".edit-button, .delete-button")) {
     return;
@@ -1067,7 +1075,7 @@ rolesTable.addEventListener("click", (event) => {
       currentDraft.roles = currentDraft.roles.filter((entry) => entry.roleId !== roleId);
       renderEditView(currentDraft);
     }
-    renderRolesTable();
+    renderRolesCards();
     renderSavedCompositions();
     return;
   }
@@ -1101,7 +1109,7 @@ const handleRolesImport = async (file) => {
     const normalized = ensureCoreRoles(normalizeRoles(parsed));
     writeStorage(STORAGE_KEYS.roles, normalized);
     resetRoleForm();
-    renderRolesTable();
+    renderRolesCards();
   } catch (error) {
     return;
   }
@@ -1128,7 +1136,7 @@ importRolesInput.addEventListener("change", (event) => {
 
 const init = async () => {
   await ensureRolesFromFile();
-  renderRolesTable();
+  renderRolesCards();
   renderSavedCompositions();
   setRoleFormMode("add");
   toggleSolitaireRestrictions();

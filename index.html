@@ -98,20 +98,18 @@
           <h4>Règles de pré-composition brisées</h4>
           <ul id="warning-list"></ul>
         </div>
-        <div class="split">
-          <div>
-            <h3>Rôles sélectionnés</h3>
-            <ul id="edit-roles" class="list"></ul>
-          </div>
-          <div>
-            <h3>Ajouter un rôle</h3>
-            <div id="available-roles" class="role-grid"></div>
-          </div>
-        </div>
         <div class="actions">
           <button id="save-composition" class="primary">Sauvegarder</button>
           <button data-target="create">Retour à la création</button>
         </div>
+      </div>
+      <div class="card">
+        <h3>Rôles sélectionnés</h3>
+        <ul id="edit-roles" class="list"></ul>
+      </div>
+      <div class="card">
+        <h3>Ajouter un rôle</h3>
+        <div id="available-roles" class="role-grid"></div>
       </div>
     </section>
 
@@ -128,23 +126,7 @@
     <section id="roles" class="screen">
       <div class="card">
         <h2>Base de données des rôles</h2>
-        <div class="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>Rôle</th>
-                <th>Alignement</th>
-                <th>Types</th>
-                <th>Handicap</th>
-                <th>Loup</th>
-                <th>Poids</th>
-                <th>Modes</th>
-                <th class="table-action">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="roles-table"></tbody>
-          </table>
-        </div>
+        <div id="roles-cards" class="roles-grid"></div>
         <div class="actions">
           <button type="button" id="export-roles" class="ghost">Exporter la base</button>
           <label class="file-input ghost">

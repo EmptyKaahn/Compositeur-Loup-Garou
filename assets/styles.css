@@ -68,7 +68,11 @@ button:disabled {
 main {
   padding: 2rem;
   width: 100%;
-  max-width: 480px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 .screen {
@@ -76,7 +80,7 @@ main {
 }
 
 .screen.active {
-  display: block;
+  display: contents;
 }
 
 .card {
@@ -84,12 +88,18 @@ main {
   border-radius: 16px;
   padding: 1.5rem;
   box-shadow: 0 12px 30px rgba(30, 29, 61, 0.08);
+  width: 100%;
+  max-width: 480px;
+  flex: 1 1 480px;
 }
 
 .grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 1.5rem;
+  width: 100%;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 .form {
@@ -233,6 +243,27 @@ legend {
   gap: 0.35rem;
 }
 
+.role-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.role-card-header strong {
+  flex: 1 1 220px;
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.role-weight {
+  white-space: nowrap;
+  font-weight: 700;
+  color: var(--accent-strong);
+  margin-left: auto;
+}
+
 .balance {
   margin: 1rem 0;
   padding: 0.75rem 1rem;
@@ -297,36 +328,48 @@ legend {
   color: var(--bad);
 }
 
-.table-wrapper {
-  overflow-x: auto;
+.roles-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
   margin-bottom: 1.5rem;
 }
 
-th,
-td {
-  text-align: left;
-  padding: 0.6rem 0.8rem;
-  border-bottom: 1px solid var(--border);
+.role-db-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  background: #ffffff;
+  display: grid;
+  gap: 0.5rem;
+  width: 100%;
 }
 
-.table-action {
-  text-align: center;
-  width: 140px;
+.role-db-card .meta-line {
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 
-.edit-button {
+.role-db-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.role-db-actions .edit-button,
+.role-db-actions .delete-button {
   border: none;
   background: transparent;
   font-size: 1.1rem;
   cursor: pointer;
+}
+
+.role-db-actions .edit-button {
   color: var(--accent-strong);
 }
 
-.delete-button {
-  border: none;
-  background: transparent;
-  font-size: 1.1rem;
-  cursor: pointer;
+.role-db-actions .delete-button {
   color: var(--bad);
 }
 
