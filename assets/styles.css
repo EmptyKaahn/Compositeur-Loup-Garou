@@ -20,6 +20,9 @@ body {
   font-family: "Inter", "Segoe UI", system-ui, sans-serif;
   color: var(--text);
   background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .app-header {
@@ -31,6 +34,8 @@ body {
   padding: 1.5rem 2rem;
   background: var(--card);
   border-bottom: 1px solid var(--border);
+  width: 100%;
+  max-width: 480px;
 }
 
 .main-nav {
@@ -62,6 +67,8 @@ button:disabled {
 
 main {
   padding: 2rem;
+  width: 100%;
+  max-width: 480px;
 }
 
 .screen {
@@ -118,6 +125,13 @@ fieldset {
   padding: 0.75rem 1rem;
   display: grid;
   gap: 0.5rem;
+}
+
+fieldset label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
 }
 
 legend {

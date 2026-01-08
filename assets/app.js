@@ -17,7 +17,7 @@ const MODE_SHORT_LABELS = {
 
 const TEMPO_LABELS = {
   express: "Express",
-  equilibree: "Équilibrée",
+  equilibree: "Standard",
   lente: "Lente",
 };
 
@@ -57,7 +57,7 @@ const coreRoles = [
     types: ["elimination"],
     handicap: false,
     wolf: true,
-    weight: "2-8*N",
+    weight: "(2-8*N)",
     description: "Peut se concerter avec ses pairs afin d'éliminer un membre du village, la nuit.",
     modes: ["clair", "flou", "obscur"],
     locked: true,
@@ -724,6 +724,7 @@ const renderEditView = (composition) => {
     const flags = [
       labelTypes(role.types),
       ALIGN_LABELS[role.alignment],
+      `Poids ${role.weight}`,
       role.handicap ? "Handicap" : null,
       role.wolf ? "Loup" : null,
     ].filter(Boolean);
