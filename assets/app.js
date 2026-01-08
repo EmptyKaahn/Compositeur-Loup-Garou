@@ -44,6 +44,8 @@ const roleForm = document.getElementById("role-form");
 const roleFormTitle = document.getElementById("role-form-title");
 const roleSubmit = document.getElementById("role-submit");
 const roleCancel = document.getElementById("role-cancel");
+const exportRolesButton = document.getElementById("export-roles");
+const importRolesInput = document.getElementById("import-roles");
 
 let currentDraft = null;
 let editingRoleId = null;
@@ -57,6 +59,7 @@ const defaultRoles = [
     weight: "2 - 0.8*N",
     description: "Se réveille la nuit afin de tuer un membre du village, en se concertant avec ses pairs.",
     modes: ["clair", "flou", "obscur"],
+    repeatable: true,
   },
   {
     id: "villageois",
@@ -66,6 +69,7 @@ const defaultRoles = [
     weight: "1",
     description: "Aucun pouvoir. Débat et vote chaque jour pour l'élimination d'un membre du village.",
     modes: ["clair", "flou", "obscur"],
+    repeatable: true,
   },
   {
     id: "voyante",
@@ -75,6 +79,7 @@ const defaultRoles = [
     weight: "1.5",
     description: "Peut consulter l'alignement d'un joueur chaque nuit.",
     modes: ["clair", "flou"],
+    repeatable: false,
   },
   {
     id: "garde",
@@ -84,6 +89,7 @@ const defaultRoles = [
     weight: "1.2",
     description: "Protège un joueur chaque nuit.",
     modes: ["clair", "flou", "obscur"],
+    repeatable: false,
   },
   {
     id: "chasseur",
@@ -93,6 +99,7 @@ const defaultRoles = [
     weight: "0.8",
     description: "Peut éliminer un joueur en mourant.",
     modes: ["clair", "flou"],
+    repeatable: false,
   },
   {
     id: "loup-blanc",
@@ -102,6 +109,7 @@ const defaultRoles = [
     weight: "-1.2",
     description: "Loup solitaire qui cherche à éliminer d'autres loups.",
     modes: ["flou", "obscur"],
+    repeatable: false,
   },
 ];
 
@@ -144,13 +152,42 @@ const writeStorage = (key, value) => {
   localStorage.setItem(key, JSON.stringify(value));
 };
 
+const normalizeRoles = (roles) =>
+  roles.map((role) => ({
+    ...role,
+    repeatable: role.repeatable ?? true,
+    types: role.types ?? [],
+    modes: role.modes ?? [],
+  }));
+
+const ensureRolesFromFile = async () => {
+  const stored = readStorage(STORAGE_KEYS.roles, null);
+  if (stored && stored.length) {
+    const normalized = normalizeRoles(stored);
+    writeStorage(STORAGE_KEYS.roles, normalized);
+    return normalized;
+  }
+  try {
+    const response = await fetch("assets/roles.json");
+    if (!response.ok) {
+      throw new Error("Impossible de charger le fichier des rôles.");
+    }
+    const roles = normalizeRoles(await response.json());
+    writeStorage(STORAGE_KEYS.roles, roles);
+    return roles;
+  } catch (error) {
+    writeStorage(STORAGE_KEYS.roles, normalizeRoles(defaultRoles));
+    return defaultRoles;
+  }
+};
+
 const getRoles = () => {
   const stored = readStorage(STORAGE_KEYS.roles, null);
   if (!stored || stored.length === 0) {
     writeStorage(STORAGE_KEYS.roles, defaultRoles);
-    return [...defaultRoles];
+    return normalizeRoles(defaultRoles);
   }
-  return stored;
+  return normalizeRoles(stored);
 };
 
 const getCompositions = () => readStorage(STORAGE_KEYS.compositions, []);
@@ -227,6 +264,83 @@ const computeDistribution = (composition, roles) => {
   return totals;
 };
 
+const buildTypeTargets = (players, tempo) => {
+  const targets = getTempoTargets(tempo, players);
+  return {
+    elimination: targets.elimination > 0 ? 1 : 0,
+    voyance: targets.voyance > 0 ? 1 : 0,
+    protection: targets.protection > 0 ? 1 : 0,
+  };
+};
+
+const canRemoveRole = (role, totals, minTargets) => {
+  if (!role) {
+    return false;
+  }
+  return role.types.every((type) => {
+    if (!(type in minTargets)) {
+      return true;
+    }
+    return totals[type] - 1 >= minTargets[type];
+  });
+};
+
+const adjustBalanceWithVillagers = (composition, roles) => {
+  const minTargets = buildTypeTargets(composition.players, composition.tempo);
+  let balance = computeBalance(composition, roles);
+  let totals = computeDistribution(composition, roles);
+  let safety = 0;
+
+  const getDelta = (role, count, direction) => {
+    const current = evaluateWeight(role.weight, count);
+    const next = evaluateWeight(role.weight, count + direction);
+    return next - current;
+  };
+
+  while ((balance > 1 || balance < -1) && safety < 200) {
+    const direction = balance > 1 ? -1 : 1;
+    const candidates = composition.roles
+      .map((entry) => {
+        const role = roles.find((item) => item.id === entry.roleId);
+        if (!role || entry.count <= 0) {
+          return null;
+        }
+        if (!canRemoveRole(role, totals, minTargets)) {
+          return null;
+        }
+        const delta = getDelta(role, entry.count, direction);
+        if ((balance > 1 && delta >= 0) || (balance < -1 && delta <= 0)) {
+          return { role, entry, delta };
+        }
+        return null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+
+    if (!candidates.length) {
+      break;
+    }
+    const { entry, role } = candidates[0];
+    entry.count = Math.max(0, entry.count - 1);
+    if (role.types.length) {
+      totals = computeDistribution(composition, roles);
+    }
+    balance = computeBalance(composition, roles);
+    safety += 1;
+  }
+
+  composition.roles = composition.roles.filter((entry) => entry.count > 0);
+  const total = composition.roles.reduce((sum, roleEntry) => sum + roleEntry.count, 0);
+  const diff = composition.players - total;
+  if (diff !== 0) {
+    const villager = composition.roles.find((entry) => entry.roleId === "villageois");
+    if (villager) {
+      villager.count += diff;
+    }
+  }
+  return composition;
+};
+
 const labelTypes = (types) => {
   if (!types.length) {
     return "Aucun";
@@ -301,7 +415,6 @@ const inferMode = (composition, roles) => {
 const buildComposition = ({ players, mode, tempo }) => {
   const roles = getRoles().filter((role) => role.modes.includes(mode));
   const targets = getTempoTargets(tempo, players);
-  const roleCounts = [];
   const totalRoles = players;
 
   const targetCounts = {
@@ -312,7 +425,16 @@ const buildComposition = ({ players, mode, tempo }) => {
 
   const chosen = new Map();
   const addRole = (roleId, count = 1) => {
-    chosen.set(roleId, (chosen.get(roleId) || 0) + count);
+    const role = roles.find((item) => item.id === roleId);
+    if (!role) {
+      return false;
+    }
+    const current = chosen.get(roleId) || 0;
+    if (!role.repeatable && current >= 1) {
+      return false;
+    }
+    chosen.set(roleId, current + count);
+    return true;
   };
 
   const wolfRole = roles.find((role) => role.id === "loup-garou");
@@ -325,15 +447,19 @@ const buildComposition = ({ players, mode, tempo }) => {
     if (!available.length || desired <= 0) {
       return;
     }
+    const weighted = [...available].sort(
+      (a, b) => evaluateWeight(a.weight, 1) - evaluateWeight(b.weight, 1)
+    );
     let remaining = desired - (Array.from(chosen).reduce((sum, [roleId, count]) => {
       const role = roles.find((item) => item.id === roleId);
       return role && role.types.includes(type) ? sum + count : sum;
     }, 0));
     let index = 0;
-    while (remaining > 0) {
-      const role = available[index % available.length];
-      addRole(role.id, 1);
-      remaining -= 1;
+    while (remaining > 0 && index < weighted.length * 5) {
+      const role = weighted[index % weighted.length];
+      if (addRole(role.id, 1)) {
+        remaining -= 1;
+      }
       index += 1;
     }
   };
@@ -386,13 +512,10 @@ const balanceComposition = (composition, roles) => {
 
   const balance = computeBalance(composition, roles);
   if (balance < -1 || balance > 1) {
-    const villager = composition.roles.find((entry) => entry.roleId === "villageois");
-    if (villager) {
-      villager.count += balance > 1 ? -1 : 1;
-    }
+    return adjustBalanceWithVillagers(composition, roles);
   }
 
-  return composition;
+  return adjustBalanceWithVillagers(composition, roles);
 };
 
 const updatePrecompView = (composition, roles) => {
@@ -437,7 +560,7 @@ const renderEditView = (composition) => {
       <div class="counter">
         <button class="decrement" data-role="${role.id}">-</button>
         <span>${entry.count}</span>
-        <button class="increment" data-role="${role.id}">+</button>
+        <button class="increment" data-role="${role.id}" ${!role.repeatable && entry.count >= 1 ? "disabled" : ""}>+</button>
       </div>
     `;
     editRolesList.appendChild(listItem);
@@ -451,7 +574,7 @@ const renderEditView = (composition) => {
       <strong>${role.name}</strong>
       <div class="meta">${labelTypes(role.types)} · ${ALIGN_LABELS[role.alignment]}</div>
       <p>${role.description || "Aucune description."}</p>
-      <button data-role="${role.id}">Ajouter</button>
+      <button data-role="${role.id}" ${!role.repeatable && composition.roles.some((entry) => entry.roleId === role.id) ? "disabled" : ""}>Ajouter</button>
     `;
     availableRoles.appendChild(card);
   });
@@ -503,6 +626,10 @@ editRolesList.addEventListener("click", (event) => {
       return;
     }
     if (target.classList.contains("increment")) {
+      const role = roles.find((item) => item.id === roleId);
+      if (role && !role.repeatable && entry.count >= 1) {
+        return;
+      }
       entry.count += 1;
       return;
     }
@@ -593,7 +720,11 @@ const renderRolesTable = () => {
       <td>${labelTypes(role.types)}</td>
       <td>${role.weight}</td>
       <td>${labelModes(role.modes)}</td>
-      <td class="table-action"><button class="edit-button" type="button" data-role="${role.id}" aria-label="Éditer ${role.name}">✏️</button></td>
+      <td>${role.repeatable ? "Oui" : "Non"}</td>
+      <td class="table-action">
+        <button class="edit-button" type="button" data-role="${role.id}" aria-label="Éditer ${role.name}">✏️</button>
+        <button class="delete-button" type="button" data-role="${role.id}" aria-label="Supprimer ${role.name}">🗑️</button>
+      </td>
     `;
     rolesTable.appendChild(row);
   });
@@ -619,6 +750,7 @@ roleForm.addEventListener("submit", (event) => {
   const alignment = document.getElementById("role-alignment").value;
   const weight = document.getElementById("role-weight").value.trim();
   const description = document.getElementById("role-description").value.trim();
+  const repeatable = document.getElementById("role-repeatable").checked;
   const types = Array.from(roleForm.querySelectorAll("#role-types input:checked")).map(
     (input) => input.value
   );
@@ -637,6 +769,7 @@ roleForm.addEventListener("submit", (event) => {
       target.weight = weight;
       target.description = description;
       target.modes = modes;
+      target.repeatable = repeatable;
     }
   } else {
     roles.push({
@@ -647,6 +780,7 @@ roleForm.addEventListener("submit", (event) => {
       weight,
       description,
       modes,
+      repeatable,
     });
   }
   writeStorage(STORAGE_KEYS.roles, roles);
@@ -660,7 +794,7 @@ roleCancel.addEventListener("click", () => {
 
 rolesTable.addEventListener("click", (event) => {
   const target = event.target;
-  if (!target.matches(".edit-button")) {
+  if (!target.matches(".edit-button, .delete-button")) {
     return;
   }
   const roleId = target.dataset.role;
@@ -669,11 +803,32 @@ rolesTable.addEventListener("click", (event) => {
   if (!role) {
     return;
   }
+  if (target.matches(".delete-button")) {
+    const updatedRoles = roles.filter((item) => item.id !== roleId);
+    writeStorage(STORAGE_KEYS.roles, updatedRoles);
+    if (editingRoleId === roleId) {
+      resetRoleForm();
+    }
+    const compositions = getCompositions();
+    const updatedCompositions = compositions.map((composition) => ({
+      ...composition,
+      roles: composition.roles.filter((entry) => entry.roleId !== roleId),
+    }));
+    persistCompositions(updatedCompositions);
+    if (currentDraft) {
+      currentDraft.roles = currentDraft.roles.filter((entry) => entry.roleId !== roleId);
+      renderEditView(currentDraft);
+    }
+    renderRolesTable();
+    renderSavedCompositions();
+    return;
+  }
   editingRoleId = role.id;
   document.getElementById("role-name").value = role.name;
   document.getElementById("role-alignment").value = role.alignment;
   document.getElementById("role-weight").value = role.weight;
   document.getElementById("role-description").value = role.description;
+  document.getElementById("role-repeatable").checked = role.repeatable;
   roleForm.querySelectorAll("#role-types input").forEach((checkbox) => {
     checkbox.checked = role.types.includes(checkbox.value);
   });
@@ -683,7 +838,46 @@ rolesTable.addEventListener("click", (event) => {
   setRoleFormMode("edit");
 });
 
-const init = () => {
+const handleRolesImport = async (file) => {
+  if (!file) {
+    return;
+  }
+  const text = await file.text();
+  try {
+    const parsed = JSON.parse(text);
+    if (!Array.isArray(parsed)) {
+      return;
+    }
+    const normalized = normalizeRoles(parsed);
+    writeStorage(STORAGE_KEYS.roles, normalized);
+    resetRoleForm();
+    renderRolesTable();
+  } catch (error) {
+    return;
+  }
+};
+
+exportRolesButton.addEventListener("click", () => {
+  const roles = getRoles();
+  const blob = new Blob([JSON.stringify(roles, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "roles.json";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+});
+
+importRolesInput.addEventListener("change", (event) => {
+  const file = event.target.files?.[0];
+  handleRolesImport(file);
+  event.target.value = "";
+});
+
+const init = async () => {
+  await ensureRolesFromFile();
   renderRolesTable();
   renderSavedCompositions();
   setRoleFormMode("add");

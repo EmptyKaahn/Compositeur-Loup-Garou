@@ -96,6 +96,13 @@ label {
   font-weight: 600;
 }
 
+label.inline {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 600;
+}
+
 input,
 select,
 textarea {
@@ -161,6 +168,19 @@ legend {
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 1rem;
+}
+
+.file-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.file-input input {
+  display: none;
 }
 
 .hero {
@@ -248,7 +268,7 @@ td {
 
 .table-action {
   text-align: center;
-  width: 80px;
+  width: 140px;
 }
 
 .edit-button {
@@ -257,6 +277,14 @@ td {
   font-size: 1.1rem;
   cursor: pointer;
   color: var(--accent-strong);
+}
+
+.delete-button {
+  border: none;
+  background: transparent;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: var(--bad);
 }
 
 .ghost {

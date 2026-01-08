@@ -1,0 +1,62 @@
+[
+  {
+    "id": "loup-garou",
+    "name": "Loup-Garou",
+    "alignment": "mauvais",
+    "types": ["elimination"],
+    "weight": "2 - 0.8*N",
+    "description": "Se réveille la nuit afin de tuer un membre du village, en se concertant avec ses pairs.",
+    "modes": ["clair", "flou", "obscur"],
+    "repeatable": true
+  },
+  {
+    "id": "villageois",
+    "name": "Simple Villageois",
+    "alignment": "bon",
+    "types": [],
+    "weight": "1",
+    "description": "Aucun pouvoir. Débat et vote chaque jour pour l'élimination d'un membre du village.",
+    "modes": ["clair", "flou", "obscur"],
+    "repeatable": true
+  },
+  {
+    "id": "voyante",
+    "name": "Voyante",
+    "alignment": "bon",
+    "types": ["voyance"],
+    "weight": "1.5",
+    "description": "Peut consulter l'alignement d'un joueur chaque nuit.",
+    "modes": ["clair", "flou"],
+    "repeatable": false
+  },
+  {
+    "id": "garde",
+    "name": "Garde",
+    "alignment": "bon",
+    "types": ["protection"],
+    "weight": "1.2",
+    "description": "Protège un joueur chaque nuit.",
+    "modes": ["clair", "flou", "obscur"],
+    "repeatable": false
+  },
+  {
+    "id": "chasseur",
+    "name": "Chasseur",
+    "alignment": "bon",
+    "types": ["elimination"],
+    "weight": "0.8",
+    "description": "Peut éliminer un joueur en mourant.",
+    "modes": ["clair", "flou"],
+    "repeatable": false
+  },
+  {
+    "id": "loup-blanc",
+    "name": "Loup Blanc",
+    "alignment": "mauvais",
+    "types": ["elimination"],
+    "weight": "-1.2",
+    "description": "Loup solitaire qui cherche à éliminer d'autres loups.",
+    "modes": ["flou", "obscur"],
+    "repeatable": false
+  }
+]
