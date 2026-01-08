@@ -41,8 +41,12 @@ const saveCompositionButton = document.getElementById("save-composition");
 const savedList = document.getElementById("saved-list");
 const rolesTable = document.getElementById("roles-table");
 const roleForm = document.getElementById("role-form");
+const roleFormTitle = document.getElementById("role-form-title");
+const roleSubmit = document.getElementById("role-submit");
+const roleCancel = document.getElementById("role-cancel");
 
 let currentDraft = null;
+let editingRoleId = null;
 
 const defaultRoles = [
   {
@@ -589,9 +593,23 @@ const renderRolesTable = () => {
       <td>${labelTypes(role.types)}</td>
       <td>${role.weight}</td>
       <td>${labelModes(role.modes)}</td>
+      <td class="table-action"><button class="edit-button" type="button" data-role="${role.id}" aria-label="Éditer ${role.name}">✏️</button></td>
     `;
     rolesTable.appendChild(row);
   });
+};
+
+const setRoleFormMode = (mode) => {
+  const isEditing = mode === "edit";
+  roleFormTitle.textContent = isEditing ? "Modifier un rôle" : "Ajouter un rôle";
+  roleSubmit.textContent = isEditing ? "Mettre à jour le rôle" : "Ajouter le rôle";
+  roleCancel.hidden = !isEditing;
+};
+
+const resetRoleForm = () => {
+  roleForm.reset();
+  editingRoleId = null;
+  setRoleFormMode("add");
 };
 
 roleForm.addEventListener("submit", (event) => {
@@ -610,23 +628,65 @@ roleForm.addEventListener("submit", (event) => {
   if (!name || modes.length === 0) {
     return;
   }
-  roles.push({
-    id: `${name.toLowerCase().replace(/\s+/g, "-")}-${crypto.randomUUID().slice(0, 6)}`,
-    name,
-    alignment,
-    types,
-    weight,
-    description,
-    modes,
-  });
+  if (editingRoleId) {
+    const target = roles.find((role) => role.id === editingRoleId);
+    if (target) {
+      target.name = name;
+      target.alignment = alignment;
+      target.types = types;
+      target.weight = weight;
+      target.description = description;
+      target.modes = modes;
+    }
+  } else {
+    roles.push({
+      id: `${name.toLowerCase().replace(/\s+/g, "-")}-${crypto.randomUUID().slice(0, 6)}`,
+      name,
+      alignment,
+      types,
+      weight,
+      description,
+      modes,
+    });
+  }
   writeStorage(STORAGE_KEYS.roles, roles);
-  roleForm.reset();
+  resetRoleForm();
   renderRolesTable();
+});
+
+roleCancel.addEventListener("click", () => {
+  resetRoleForm();
+});
+
+rolesTable.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!target.matches(".edit-button")) {
+    return;
+  }
+  const roleId = target.dataset.role;
+  const roles = getRoles();
+  const role = roles.find((item) => item.id === roleId);
+  if (!role) {
+    return;
+  }
+  editingRoleId = role.id;
+  document.getElementById("role-name").value = role.name;
+  document.getElementById("role-alignment").value = role.alignment;
+  document.getElementById("role-weight").value = role.weight;
+  document.getElementById("role-description").value = role.description;
+  roleForm.querySelectorAll("#role-types input").forEach((checkbox) => {
+    checkbox.checked = role.types.includes(checkbox.value);
+  });
+  roleForm.querySelectorAll("#role-modes input").forEach((checkbox) => {
+    checkbox.checked = role.modes.includes(checkbox.value);
+  });
+  setRoleFormMode("edit");
 });
 
 const init = () => {
   renderRolesTable();
   renderSavedCompositions();
+  setRoleFormMode("add");
 };
 
 init();

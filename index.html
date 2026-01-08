@@ -117,12 +117,13 @@
                 <th>Types</th>
                 <th>Poids</th>
                 <th>Modes</th>
+                <th class="table-action">Édition</th>
               </tr>
             </thead>
             <tbody id="roles-table"></tbody>
           </table>
         </div>
-        <h3>Ajouter un rôle</h3>
+        <h3 id="role-form-title">Ajouter un rôle</h3>
         <form id="role-form" class="form">
           <label>
             Nom du rôle
@@ -156,7 +157,10 @@
             <label><input type="checkbox" value="flou" checked /> Flou</label>
             <label><input type="checkbox" value="obscur" checked /> Obscur</label>
           </fieldset>
-          <button type="submit" class="primary">Ajouter le rôle</button>
+          <div class="actions">
+            <button type="submit" class="primary" id="role-submit">Ajouter le rôle</button>
+            <button type="button" id="role-cancel" class="ghost" hidden>Annuler la modification</button>
+          </div>
         </form>
       </div>
     </section>

@@ -246,6 +246,24 @@ td {
   border-bottom: 1px solid var(--border);
 }
 
+.table-action {
+  text-align: center;
+  width: 80px;
+}
+
+.edit-button {
+  border: none;
+  background: transparent;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: var(--accent-strong);
+}
+
+.ghost {
+  border: 1px dashed var(--border);
+  color: var(--muted);
+}
+
 .good {
   color: var(--good);
   font-weight: 600;
