@@ -40,7 +40,16 @@
           <form id="compose-form" class="form">
             <label>
               Nombre de joueurs
-              <input type="number" id="player-count" min="5" max="50" value="12" required />
+              <select id="player-count" required>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+                <option value="11">11</option>
+                <option value="12" selected>12</option>
+                <option value="13">13</option>
+                <option value="14">14</option>
+                <option value="15">15</option>
+              </select>
             </label>
             <label>
               Mode de jeu
@@ -79,8 +88,16 @@
     <section id="edit" class="screen">
       <div class="card">
         <h2>Édition de composition</h2>
+        <label class="inline">
+          Nom de la composition
+          <input type="text" id="composition-name" placeholder="Nom de la composition" />
+        </label>
         <div id="edit-summary" class="meta"></div>
         <div class="balance" id="balance-info"></div>
+        <div id="rule-warnings" class="warnings" hidden>
+          <h4>Règles de pré-composition brisées</h4>
+          <ul id="warning-list"></ul>
+        </div>
         <div class="split">
           <div>
             <h3>Rôles sélectionnés</h3>
@@ -118,9 +135,10 @@
                 <th>Rôle</th>
                 <th>Alignement</th>
                 <th>Types</th>
+                <th>Handicap</th>
+                <th>Loup</th>
                 <th>Poids</th>
                 <th>Modes</th>
-                <th>Multiples</th>
                 <th class="table-action">Actions</th>
               </tr>
             </thead>
@@ -141,30 +159,36 @@
             <input type="text" id="role-name" required />
           </label>
           <label>
+            Description
+            <textarea id="role-description" rows="3"></textarea>
+          </label>
+          <label>
             Alignement
             <select id="role-alignment">
               <option value="bon">Bon</option>
               <option value="mauvais">Mauvais</option>
-              <option value="neutre">Neutre</option>
             </select>
           </label>
           <fieldset id="role-types">
             <legend>Type du rôle</legend>
-            <label><input type="checkbox" value="voyance" /> Voyance</label>
-            <label><input type="checkbox" value="elimination" /> Élimination</label>
-            <label><input type="checkbox" value="protection" /> Protection</label>
+            <label><input type="checkbox" value="elimination" /> Rôle d'élimination</label>
+            <label><input type="checkbox" value="protection" /> Rôle de protection</label>
+            <label><input type="checkbox" value="voyance-major" /> Rôle de voyance majeure</label>
+            <label><input type="checkbox" value="voyance-minor" /> Rôle de voyance mineure</label>
+            <label><input type="checkbox" value="solitaire" /> Rôle solitaire</label>
+            <label><input type="checkbox" value="day" /> Rôle de mécanique de jour</label>
           </fieldset>
+          <label class="inline">
+            <input type="checkbox" id="role-handicap" />
+            Rôle d'handicap
+          </label>
+          <label class="inline">
+            <input type="checkbox" id="role-wolf" />
+            Rôle de loup
+          </label>
           <label>
             Poids (N = quantité)
             <input type="text" id="role-weight" placeholder="Ex: 2 - 0.5*N" required />
-          </label>
-          <label>
-            Description
-            <textarea id="role-description" rows="3"></textarea>
-          </label>
-          <label class="inline">
-            <input type="checkbox" id="role-repeatable" checked />
-            Peut apparaître plusieurs fois
           </label>
           <fieldset id="role-modes">
             <legend>Modes de jeu</legend>
@@ -187,6 +211,7 @@
         <input class="saved-title" />
         <div class="saved-meta"></div>
       </div>
+      <div class="saved-warning" aria-label="Règles brisées" title="Règles de pré-composition brisées" hidden>⚠️</div>
       <div class="actions">
         <button class="open">Éditer</button>
         <button class="duplicate">Dupliquer</button>

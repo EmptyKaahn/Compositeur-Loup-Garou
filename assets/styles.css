@@ -158,6 +158,11 @@ legend {
   font-weight: 700;
 }
 
+.counter input {
+  width: 64px;
+  text-align: center;
+}
+
 .meta {
   color: var(--muted);
   margin-bottom: 0.75rem;
@@ -222,6 +227,24 @@ legend {
   border: 1px solid var(--border);
 }
 
+.warnings {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: #fff3f3;
+  border: 1px solid rgba(161, 61, 61, 0.2);
+}
+
+.warnings h4 {
+  margin: 0 0 0.5rem;
+}
+
+.warnings ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--bad);
+}
+
 .saved-list {
   display: grid;
   gap: 1rem;
@@ -236,6 +259,7 @@ legend {
   border-radius: 12px;
   padding: 1rem;
   background: #ffffff;
+  align-items: center;
 }
 
 .saved-title {
@@ -252,6 +276,11 @@ legend {
 
 .saved-meta {
   color: var(--muted);
+}
+
+.saved-warning {
+  font-size: 1.2rem;
+  color: var(--bad);
 }
 
 .table-wrapper {

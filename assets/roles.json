@@ -1,62 +1,92 @@
 [
   {
-    "id": "loup-garou",
-    "name": "Loup-Garou",
-    "alignment": "mauvais",
-    "types": ["elimination"],
-    "weight": "2 - 0.8*N",
-    "description": "Se réveille la nuit afin de tuer un membre du village, en se concertant avec ses pairs.",
-    "modes": ["clair", "flou", "obscur"],
-    "repeatable": true
-  },
-  {
     "id": "villageois",
     "name": "Simple Villageois",
     "alignment": "bon",
     "types": [],
+    "handicap": false,
+    "wolf": false,
     "weight": "1",
-    "description": "Aucun pouvoir. Débat et vote chaque jour pour l'élimination d'un membre du village.",
+    "description": "Aucun pouvoir. Vote le jour pour éliminer un membre du village.",
     "modes": ["clair", "flou", "obscur"],
-    "repeatable": true
+    "locked": true
+  },
+  {
+    "id": "loup-garou",
+    "name": "Loup-garou",
+    "alignment": "mauvais",
+    "types": ["elimination"],
+    "handicap": false,
+    "wolf": true,
+    "weight": "2-8*N",
+    "description": "Peut se concerter avec ses pairs afin d'éliminer un membre du village, la nuit.",
+    "modes": ["clair", "flou", "obscur"],
+    "locked": true
   },
   {
     "id": "voyante",
     "name": "Voyante",
     "alignment": "bon",
-    "types": ["voyance"],
+    "types": ["voyance-major"],
+    "handicap": false,
+    "wolf": false,
     "weight": "1.5",
     "description": "Peut consulter l'alignement d'un joueur chaque nuit.",
-    "modes": ["clair", "flou"],
-    "repeatable": false
+    "modes": ["clair", "flou"]
   },
   {
     "id": "garde",
     "name": "Garde",
     "alignment": "bon",
     "types": ["protection"],
+    "handicap": false,
+    "wolf": false,
     "weight": "1.2",
     "description": "Protège un joueur chaque nuit.",
-    "modes": ["clair", "flou", "obscur"],
-    "repeatable": false
+    "modes": ["clair", "flou", "obscur"]
   },
   {
     "id": "chasseur",
     "name": "Chasseur",
     "alignment": "bon",
     "types": ["elimination"],
+    "handicap": false,
+    "wolf": false,
     "weight": "0.8",
     "description": "Peut éliminer un joueur en mourant.",
-    "modes": ["clair", "flou"],
-    "repeatable": false
+    "modes": ["clair", "flou"]
   },
   {
     "id": "loup-blanc",
     "name": "Loup Blanc",
     "alignment": "mauvais",
-    "types": ["elimination"],
+    "types": ["solitaire"],
+    "handicap": false,
+    "wolf": false,
     "weight": "-1.2",
     "description": "Loup solitaire qui cherche à éliminer d'autres loups.",
-    "modes": ["flou", "obscur"],
-    "repeatable": false
+    "modes": ["flou", "obscur"]
+  },
+  {
+    "id": "voyante-mineure",
+    "name": "Divinateur",
+    "alignment": "bon",
+    "types": ["voyance-minor"],
+    "handicap": false,
+    "wolf": false,
+    "weight": "0.6",
+    "description": "Obtient des indices mineurs sur un joueur chaque nuit.",
+    "modes": ["clair", "flou", "obscur"]
+  },
+  {
+    "id": "notaire",
+    "name": "Notaire",
+    "alignment": "bon",
+    "types": ["day"],
+    "handicap": false,
+    "wolf": false,
+    "weight": "0.2",
+    "description": "Apporte une mécanique de jour lors des votes.",
+    "modes": ["clair", "flou", "obscur"]
   }
 ]
