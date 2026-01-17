@@ -102,6 +102,15 @@ main {
   align-items: flex-start;
 }
 
+.roles-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  width: 100%;
+  justify-content: center;
+  align-items: flex-start;
+}
+
 .form {
   display: grid;
   gap: 1rem;
@@ -264,6 +273,27 @@ legend {
   margin-left: auto;
 }
 
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.filter-chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.35rem 0.6rem;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.filter-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 .balance {
   margin: 1rem 0;
   padding: 0.75rem 1rem;
@@ -345,11 +375,52 @@ legend {
   width: 100%;
 }
 
-.role-db-card .meta-line {
+.role-db-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.role-db-header strong {
+  flex: 1 1 220px;
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.role-db-emojis {
   color: var(--muted);
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.35rem;
+}
+
+.role-db-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.role-order {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.role-order-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  background: #fcfcff;
+}
+
+.role-order-controls {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
 }
 
 .role-db-actions {

@@ -15,12 +15,6 @@ const MODE_SHORT_LABELS = {
   obscur: "Obscur",
 };
 
-const TEMPO_LABELS = {
-  express: "Express",
-  equilibree: "Standard",
-  lente: "Lente",
-};
-
 const TYPE_LABELS = {
   elimination: "Rôle d'élimination",
   protection: "Rôle de protection",
@@ -49,6 +43,8 @@ const coreRoles = [
     description: "Aucun pouvoir. Vote le jour pour éliminer un membre du village.",
     modes: ["clair", "flou", "obscur"],
     locked: true,
+    order: 0,
+    firstNightOnly: false,
   },
   {
     id: "loup-garou",
@@ -61,6 +57,8 @@ const coreRoles = [
     description: "Peut se concerter avec ses pairs afin d'éliminer un membre du village, la nuit.",
     modes: ["clair", "flou", "obscur"],
     locked: true,
+    order: 1,
+    firstNightOnly: false,
   },
 ];
 
@@ -185,6 +183,11 @@ const availableRoles = document.getElementById("available-roles");
 const saveCompositionButton = document.getElementById("save-composition");
 const savedList = document.getElementById("saved-list");
 const rolesCards = document.getElementById("roles-cards");
+const roleFilters = document.getElementById("role-filters");
+const roleOrderList = document.getElementById("role-order");
+const lockRoleSelect = document.getElementById("lock-role-select");
+const addLockedRoleButton = document.getElementById("add-locked-role");
+const lockedRolesList = document.getElementById("locked-roles");
 const roleForm = document.getElementById("role-form");
 const roleFormTitle = document.getElementById("role-form-title");
 const roleSubmit = document.getElementById("role-submit");
@@ -197,6 +200,8 @@ const warningList = document.getElementById("warning-list");
 
 let currentDraft = null;
 let editingRoleId = null;
+let lockedRoleIds = [];
+let activeRoleFilters = new Set();
 
 const showScreen = (id) => {
   screens.forEach((screen) => {
@@ -241,7 +246,7 @@ const mapLegacyType = (type) => {
 };
 
 const normalizeRoles = (roles) =>
-  roles.map((role) => {
+  roles.map((role, index) => {
     const types = Array.from(
       new Set((role.types ?? []).map(mapLegacyType).filter((type) => type && TYPE_LABELS[type]))
     );
@@ -257,13 +262,20 @@ const normalizeRoles = (roles) =>
       description: role.description ?? "",
       weight: role.weight ?? "0",
       locked: role.locked ?? CORE_ROLE_IDS.includes(role.id),
+      order: role.order ?? index,
+      firstNightOnly: role.firstNightOnly ?? false,
     };
   });
 
 const ensureCoreRoles = (roles) => {
   const map = new Map(roles.map((role) => [role.id, role]));
   coreRoles.forEach((coreRole) => {
-    map.set(coreRole.id, coreRole);
+    const existing = map.get(coreRole.id);
+    map.set(coreRole.id, {
+      ...coreRole,
+      order: existing?.order ?? coreRole.order,
+      firstNightOnly: existing?.firstNightOnly ?? coreRole.firstNightOnly,
+    });
   });
   return Array.from(map.values());
 };
@@ -414,8 +426,6 @@ const labelTypes = (types) => {
   return types.map((type) => TYPE_LABELS[type]).join(", ");
 };
 
-const labelModes = (modes) => modes.map((mode) => MODE_LABELS[mode]).join(", ");
-
 const shuffleArray = (array) => {
   const copy = [...array];
   for (let index = copy.length - 1; index > 0; index -= 1) {
@@ -423,6 +433,36 @@ const shuffleArray = (array) => {
     [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
   }
   return copy;
+};
+
+const ROLE_FILTERS = [
+  { id: "align-good", emoji: "🟩", label: "Alignement Bon" },
+  { id: "align-bad", emoji: "🟥", label: "Alignement Mauvais" },
+  { id: "type-elimination", emoji: "⚔️", label: "Rôle d'élimination" },
+  { id: "type-protection", emoji: "🛡️", label: "Rôle de protection" },
+  { id: "type-voyance-major", emoji: "🔮", label: "Rôle de voyance majeure" },
+  { id: "type-voyance-minor", emoji: "👁️", label: "Rôle de voyance mineure" },
+  { id: "type-solitaire", emoji: "🤺", label: "Rôle solitaire" },
+  { id: "type-day", emoji: "☀️", label: "Rôle de mécanique de jour" },
+  { id: "flag-handicap", emoji: "♿", label: "Handicap" },
+  { id: "flag-wolf", emoji: "🐺", label: "Loup" },
+  { id: "mode-clair", emoji: "🌕", label: "Mode Clair" },
+  { id: "mode-flou", emoji: "🌓", label: "Mode Flou" },
+  { id: "mode-obscur", emoji: "🌑", label: "Mode Obscur" },
+];
+
+const ROLE_EMOJIS = {
+  align: { bon: "🟩", mauvais: "🟥" },
+  types: {
+    elimination: "⚔️",
+    protection: "🛡️",
+    "voyance-major": "🔮",
+    "voyance-minor": "👁️",
+    solitaire: "🤺",
+    day: "☀️",
+  },
+  flags: { handicap: "♿", wolf: "🐺" },
+  modes: { clair: "🌕", flou: "🌓", obscur: "🌑" },
 };
 
 const getRuleWarnings = (composition, roles, { includeMode = false } = {}) => {
@@ -502,27 +542,6 @@ const getRuleWarnings = (composition, roles, { includeMode = false } = {}) => {
   return warnings;
 };
 
-const buildTempoScore = (role, tempo) => {
-  let score = 0;
-  const hasType = (type) => role.types.includes(type);
-  if (hasType("elimination")) {
-    score += tempo === "express" ? 3 : tempo === "equilibree" ? 2 : 1;
-  }
-  if (hasType("voyance-major") || hasType("voyance-minor")) {
-    score += tempo === "lente" ? 3 : tempo === "equilibree" ? 2 : 1;
-  }
-  if (hasType("protection")) {
-    score += tempo === "lente" ? 3 : tempo === "equilibree" ? 2 : 1;
-  }
-  if (hasType("day")) {
-    score += tempo === "express" ? 2 : 1;
-  }
-  if (hasType("solitaire")) {
-    score += tempo === "lente" ? 2 : 1;
-  }
-  return score;
-};
-
 const canAddRoleToPrecomp = ({ composition, role, rules, roles }) => {
   const totals = countComposition(composition, roles);
   const maxBad = composition.players - rules.minGood;
@@ -569,7 +588,7 @@ const canAddRoleToPrecomp = ({ composition, role, rules, roles }) => {
   return true;
 };
 
-const buildPrecomposition = ({ players, mode, tempo }) => {
+const buildPrecomposition = ({ players, mode, lockedRoleIds }) => {
   const roles = getRoles().filter((role) => role.modes.includes(mode));
   const rules = precompRules[players];
   if (!rules) {
@@ -586,13 +605,7 @@ const buildPrecomposition = ({ players, mode, tempo }) => {
     const wolfCountOptions = wolfRole ? Array.from({ length: rules.maxWolves }, (_, idx) => idx + 1) : [0];
     const weightedWolfCounts = wolfCountOptions.flatMap((count) => {
       let weight = 1;
-      if (tempo === "express") {
-        weight = count;
-      } else if (tempo === "lente") {
-        weight = rules.maxWolves - count + 1;
-      } else {
-        weight = Math.max(1, Math.round(rules.maxWolves / 2) - Math.abs(count - Math.round(rules.maxWolves / 2)) + 1);
-      }
+      weight = Math.max(1, Math.round(rules.maxWolves / 2) - Math.abs(count - Math.round(rules.maxWolves / 2)) + 1);
       return Array.from({ length: weight }, () => count);
     });
     const wolfCount = Math.max(
@@ -604,9 +617,22 @@ const buildPrecomposition = ({ players, mode, tempo }) => {
       name: `Composition ${new Date().toLocaleDateString("fr-FR")}`,
       players,
       mode,
-      tempo,
       roles: [],
     };
+
+    const lockedIds = Array.from(new Set(lockedRoleIds ?? []));
+    lockedIds.forEach((roleId) => {
+      const role = roles.find((item) => item.id === roleId);
+      if (!role) {
+        return;
+      }
+      const existing = composition.roles.find((entry) => entry.roleId === roleId);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        composition.roles.push({ roleId, count: 1 });
+      }
+    });
 
     if (wolfRole && wolfCount > 0) {
       composition.roles.push({ roleId: wolfRole.id, count: wolfCount });
@@ -615,9 +641,7 @@ const buildPrecomposition = ({ players, mode, tempo }) => {
       composition.roles.push({ roleId: villagerRole.id, count: rules.minVillagers });
     }
 
-    const candidates = shuffleArray(
-      roles.filter((role) => !CORE_ROLE_IDS.includes(role.id))
-    ).sort((a, b) => buildTempoScore(b, tempo) - buildTempoScore(a, tempo));
+    const candidates = shuffleArray(roles.filter((role) => !CORE_ROLE_IDS.includes(role.id)));
 
     let remaining = players - countComposition(composition, roles).total;
 
@@ -680,14 +704,17 @@ const updatePrecompView = (composition, roles) => {
   }
   precompList.innerHTML = "";
   const balance = computeBalance(composition, roles);
-  precompMeta.textContent = `${composition.players} joueurs · ${MODE_LABELS[composition.mode]} · ${TEMPO_LABELS[composition.tempo]} · Équilibrage: ${balance.toFixed(2)}`;
+  precompMeta.textContent = `${composition.players} joueurs · ${MODE_LABELS[composition.mode]} · Équilibrage: ${balance.toFixed(2)}`;
   composition.roles.forEach((entry) => {
     const role = roles.find((item) => item.id === entry.roleId);
     if (!role) {
       return;
     }
     const listItem = document.createElement("li");
-    listItem.textContent = `${entry.count} × ${role.name}`;
+    listItem.innerHTML = `
+      <span>${entry.count} × ${role.name}</span>
+      <button class="ghost lock-role" data-role="${role.id}">Verrouiller</button>
+    `;
     precompList.appendChild(listItem);
   });
 };
@@ -710,7 +737,7 @@ const renderWarnings = (composition, roles) => {
 const renderEditView = (composition) => {
   const roles = getRoles();
   compositionNameInput.value = composition.name ?? "";
-  editSummary.textContent = `${composition.players} joueurs · ${MODE_LABELS[composition.mode]} · ${TEMPO_LABELS[composition.tempo]}`;
+  editSummary.textContent = `${composition.players} joueurs · ${MODE_LABELS[composition.mode]}`;
   const balance = computeBalance(composition, roles);
   const totals = countComposition(composition, roles);
   balanceInfo.innerHTML = `
@@ -782,12 +809,47 @@ const updateDraft = (updater) => {
   renderEditView(currentDraft);
 };
 
+const renderLockedRoles = () => {
+  const roles = getRoles();
+  lockedRolesList.innerHTML = "";
+  const existingIds = lockedRoleIds.filter((roleId) => roles.some((role) => role.id === roleId));
+  if (existingIds.length !== lockedRoleIds.length) {
+    lockedRoleIds = existingIds;
+  }
+  if (!lockedRoleIds.length) {
+    lockedRolesList.innerHTML = "<li class=\"meta\">Aucun rôle verrouillé.</li>";
+    return;
+  }
+  lockedRoleIds.forEach((roleId) => {
+    const role = roles.find((item) => item.id === roleId);
+    if (!role) {
+      return;
+    }
+    const item = document.createElement("li");
+    item.innerHTML = `
+      <span>${role.name}</span>
+      <button class="ghost" data-role="${role.id}">Retirer</button>
+    `;
+    lockedRolesList.appendChild(item);
+  });
+};
+
+const renderLockRoleOptions = () => {
+  const roles = getRoles();
+  lockRoleSelect.innerHTML = "";
+  roles.forEach((role) => {
+    const option = document.createElement("option");
+    option.value = role.id;
+    option.textContent = role.name;
+    lockRoleSelect.appendChild(option);
+  });
+};
+
 composeForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const players = Number(document.getElementById("player-count").value);
   const mode = document.getElementById("game-mode").value;
-  const tempo = document.getElementById("game-tempo").value;
-  const composition = buildPrecomposition({ players, mode, tempo });
+  const composition = buildPrecomposition({ players, mode, lockedRoleIds });
   if (!composition) {
     return;
   }
@@ -800,8 +862,7 @@ composeForm.addEventListener("submit", (event) => {
 regenButton.addEventListener("click", () => {
   const players = Number(document.getElementById("player-count").value);
   const mode = document.getElementById("game-mode").value;
-  const tempo = document.getElementById("game-tempo").value;
-  const composition = buildPrecomposition({ players, mode, tempo });
+  const composition = buildPrecomposition({ players, mode, lockedRoleIds });
   if (!composition) {
     return;
   }
@@ -880,6 +941,41 @@ availableRoles.addEventListener("click", (event) => {
   });
 });
 
+precompList.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!target.matches(".lock-role")) {
+    return;
+  }
+  const roleId = target.dataset.role;
+  if (!roleId || lockedRoleIds.includes(roleId)) {
+    return;
+  }
+  lockedRoleIds = [...lockedRoleIds, roleId];
+  renderLockedRoles();
+});
+
+addLockedRoleButton.addEventListener("click", () => {
+  const roleId = lockRoleSelect.value;
+  if (!roleId || lockedRoleIds.includes(roleId)) {
+    return;
+  }
+  lockedRoleIds = [...lockedRoleIds, roleId];
+  renderLockedRoles();
+});
+
+lockedRolesList.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!target.matches("button")) {
+    return;
+  }
+  const roleId = target.dataset.role;
+  if (!roleId) {
+    return;
+  }
+  lockedRoleIds = lockedRoleIds.filter((id) => id !== roleId);
+  renderLockedRoles();
+});
+
 saveCompositionButton.addEventListener("click", () => {
   if (!currentDraft) {
     return;
@@ -908,7 +1004,7 @@ const renderSavedCompositions = () => {
     const meta = clone.querySelector(".saved-meta");
     const warningIcon = clone.querySelector(".saved-warning");
     titleInput.value = composition.name;
-    meta.textContent = `${composition.players} joueurs · ${MODE_SHORT_LABELS[composition.mode]} · ${TEMPO_LABELS[composition.tempo]}`;
+    meta.textContent = `${composition.players} joueurs · ${MODE_SHORT_LABELS[composition.mode]}`;
     const warnings = getRuleWarnings(composition, roles, { includeMode: true });
     warningIcon.hidden = warnings.length === 0;
     titleInput.addEventListener("change", () => {
@@ -941,16 +1037,43 @@ const renderSavedCompositions = () => {
 const renderRolesCards = () => {
   const roles = getRoles();
   rolesCards.innerHTML = "";
-  roles.forEach((role) => {
+  const filteredRoles = roles.filter((role) => {
+    if (!activeRoleFilters.size) {
+      return true;
+    }
+    const checks = {
+      "align-good": role.alignment === "bon",
+      "align-bad": role.alignment === "mauvais",
+      "type-elimination": role.types.includes("elimination"),
+      "type-protection": role.types.includes("protection"),
+      "type-voyance-major": role.types.includes("voyance-major"),
+      "type-voyance-minor": role.types.includes("voyance-minor"),
+      "type-solitaire": role.types.includes("solitaire"),
+      "type-day": role.types.includes("day"),
+      "flag-handicap": role.handicap,
+      "flag-wolf": role.wolf,
+      "mode-clair": role.modes.includes("clair"),
+      "mode-flou": role.modes.includes("flou"),
+      "mode-obscur": role.modes.includes("obscur"),
+    };
+    return Array.from(activeRoleFilters).every((filter) => checks[filter]);
+  });
+  filteredRoles.forEach((role) => {
     const card = document.createElement("div");
     card.className = "role-db-card";
+    const emojiSections = [
+      ROLE_EMOJIS.align[role.alignment],
+      role.types.map((type) => ROLE_EMOJIS.types[type]).filter(Boolean).join(" "),
+      role.handicap ? ROLE_EMOJIS.flags.handicap : "",
+      role.wolf ? ROLE_EMOJIS.flags.wolf : "",
+      role.modes.map((mode) => ROLE_EMOJIS.modes[mode]).filter(Boolean).join(" "),
+    ].join(" | ");
     card.innerHTML = `
-      <div><strong>${role.name}${role.locked ? " 🔒" : ""}</strong></div>
-      <div class="meta-line">Alignement : <span class="${role.alignment === "bon" ? "good" : "bad"}">${ALIGN_LABELS[role.alignment]}</span></div>
-      <div class="meta-line">Types : ${labelTypes(role.types)}</div>
-      <div class="meta-line">Handicap : ${role.handicap ? "Oui" : "Non"} · Loup : ${role.wolf ? "Oui" : "Non"}</div>
-      <div class="meta-line">Poids : ${role.weight}</div>
-      <div class="meta-line">Modes : ${labelModes(role.modes)}</div>
+      <div class="role-db-header">
+        <strong>${role.name}${role.locked ? " 🔒" : ""}</strong>
+        <span class="role-weight">Poids ${role.weight}</span>
+      </div>
+      <div class="role-db-emojis">${emojiSections}</div>
       <div class="role-db-actions">
         <button class="edit-button" type="button" data-role="${role.id}" aria-label="Éditer ${role.name}" ${
       role.locked ? "disabled" : ""
@@ -961,6 +1084,48 @@ const renderRolesCards = () => {
       </div>
     `;
     rolesCards.appendChild(card);
+  });
+};
+
+const renderRoleFilters = () => {
+  roleFilters.innerHTML = "";
+  ROLE_FILTERS.forEach((filter) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `filter-chip${activeRoleFilters.has(filter.id) ? " active" : ""}`;
+    button.dataset.filter = filter.id;
+    button.title = filter.label;
+    button.textContent = filter.emoji;
+    roleFilters.appendChild(button);
+  });
+};
+
+const updateRoleOrder = (roles) => {
+  const sorted = [...roles].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  sorted.forEach((role, index) => {
+    role.order = index;
+  });
+  writeStorage(STORAGE_KEYS.roles, ensureCoreRoles(normalizeRoles(sorted)));
+};
+
+const renderRoleOrder = () => {
+  const roles = getRoles().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  roleOrderList.innerHTML = "";
+  roles.forEach((role, index) => {
+    const row = document.createElement("div");
+    row.className = "role-order-item";
+    row.innerHTML = `
+      <span>${role.name}</span>
+      <div class="role-order-controls">
+        <label class="inline">
+          <input type="checkbox" data-role="${role.id}" class="first-night" ${role.firstNightOnly ? "checked" : ""} />
+          Première nuit
+        </label>
+        <button class="ghost move-up" data-role="${role.id}" ${index === 0 ? "disabled" : ""}>⬆️</button>
+        <button class="ghost move-down" data-role="${role.id}" ${index === roles.length - 1 ? "disabled" : ""}>⬇️</button>
+      </div>
+    `;
+    roleOrderList.appendChild(row);
   });
 };
 
@@ -1025,6 +1190,7 @@ roleForm.addEventListener("submit", (event) => {
       target.modes = modes;
       target.handicap = isSolitaire ? false : handicap;
       target.wolf = isSolitaire ? false : wolf;
+      target.firstNightOnly = target.firstNightOnly ?? false;
     }
   } else {
     roles.push({
@@ -1037,15 +1203,71 @@ roleForm.addEventListener("submit", (event) => {
       modes,
       handicap: isSolitaire ? false : handicap,
       wolf: isSolitaire ? false : wolf,
+      firstNightOnly: false,
     });
   }
   writeStorage(STORAGE_KEYS.roles, ensureCoreRoles(normalizeRoles(roles)));
   resetRoleForm();
   renderRolesCards();
+  renderRoleOrder();
+  renderLockRoleOptions();
+  renderLockedRoles();
 });
 
 roleCancel.addEventListener("click", () => {
   resetRoleForm();
+});
+
+roleFilters.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!target.matches(".filter-chip")) {
+    return;
+  }
+  const filterId = target.dataset.filter;
+  if (activeRoleFilters.has(filterId)) {
+    activeRoleFilters.delete(filterId);
+  } else {
+    activeRoleFilters.add(filterId);
+  }
+  renderRoleFilters();
+  renderRolesCards();
+});
+
+roleOrderList.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!target.matches(".move-up, .move-down")) {
+    return;
+  }
+  const roleId = target.dataset.role;
+  const roles = getRoles().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const index = roles.findIndex((role) => role.id === roleId);
+  if (index === -1) {
+    return;
+  }
+  const swapIndex = target.classList.contains("move-up") ? index - 1 : index + 1;
+  if (swapIndex < 0 || swapIndex >= roles.length) {
+    return;
+  }
+  const [current] = roles.splice(index, 1);
+  roles.splice(swapIndex, 0, current);
+  updateRoleOrder(roles);
+  renderRolesCards();
+  renderRoleOrder();
+});
+
+roleOrderList.addEventListener("change", (event) => {
+  const target = event.target;
+  if (!target.matches(".first-night")) {
+    return;
+  }
+  const roleId = target.dataset.role;
+  const roles = getRoles();
+  const role = roles.find((item) => item.id === roleId);
+  if (!role) {
+    return;
+  }
+  role.firstNightOnly = target.checked;
+  writeStorage(STORAGE_KEYS.roles, ensureCoreRoles(normalizeRoles(roles)));
 });
 
 rolesCards.addEventListener("click", (event) => {
@@ -1060,6 +1282,9 @@ rolesCards.addEventListener("click", (event) => {
     return;
   }
   if (target.matches(".delete-button")) {
+    if (!window.confirm(`Supprimer le rôle « ${role.name} » ?`)) {
+      return;
+    }
     const updatedRoles = roles.filter((item) => item.id !== roleId);
     writeStorage(STORAGE_KEYS.roles, ensureCoreRoles(normalizeRoles(updatedRoles)));
     if (editingRoleId === roleId) {
@@ -1076,6 +1301,9 @@ rolesCards.addEventListener("click", (event) => {
       renderEditView(currentDraft);
     }
     renderRolesCards();
+    renderRoleOrder();
+    renderLockRoleOptions();
+    renderLockedRoles();
     renderSavedCompositions();
     return;
   }
@@ -1110,6 +1338,9 @@ const handleRolesImport = async (file) => {
     writeStorage(STORAGE_KEYS.roles, normalized);
     resetRoleForm();
     renderRolesCards();
+    renderRoleOrder();
+    renderLockRoleOptions();
+    renderLockedRoles();
   } catch (error) {
     return;
   }
@@ -1136,7 +1367,11 @@ importRolesInput.addEventListener("change", (event) => {
 
 const init = async () => {
   await ensureRolesFromFile();
+  renderRoleFilters();
   renderRolesCards();
+  renderRoleOrder();
+  renderLockRoleOptions();
+  renderLockedRoles();
   renderSavedCompositions();
   setRoleFormMode("add");
   toggleSolitaireRestrictions();

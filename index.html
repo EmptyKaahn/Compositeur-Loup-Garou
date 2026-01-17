@@ -60,13 +60,16 @@
               </select>
             </label>
             <label>
-              Tempo de partie
-              <select id="game-tempo">
-                <option value="express">Express</option>
-                <option value="equilibree" selected>Standard</option>
-                <option value="lente">Lente</option>
-              </select>
+              Verrouiller un rôle
+              <select id="lock-role-select"></select>
             </label>
+            <div class="actions">
+              <button type="button" id="add-locked-role" class="ghost">Ajouter le rôle verrouillé</button>
+            </div>
+            <div>
+              <h4>Rôles verrouillés</h4>
+              <ul id="locked-roles" class="list"></ul>
+            </div>
             <div class="actions">
               <button type="submit" class="primary">Générer une pré-composition</button>
               <button type="button" id="regen-precomp" class="ghost" disabled>Re-générer</button>
@@ -124,65 +127,74 @@
     </section>
 
     <section id="roles" class="screen">
-      <div class="card">
-        <h2>Base de données des rôles</h2>
-        <div id="roles-cards" class="roles-grid"></div>
-        <div class="actions">
-          <button type="button" id="export-roles" class="ghost">Exporter la base</button>
-          <label class="file-input ghost">
-            Importer une base
-            <input type="file" id="import-roles" accept="application/json" />
-          </label>
-        </div>
-        <h3 id="role-form-title">Ajouter un rôle</h3>
-        <form id="role-form" class="form">
-          <label>
-            Nom du rôle
-            <input type="text" id="role-name" required />
-          </label>
-          <label>
-            Description
-            <textarea id="role-description" rows="3"></textarea>
-          </label>
-          <label>
-            Alignement
-            <select id="role-alignment">
-              <option value="bon">Bon</option>
-              <option value="mauvais">Mauvais</option>
-            </select>
-          </label>
-          <fieldset id="role-types">
-            <legend>Type du rôle</legend>
-            <label><input type="checkbox" value="elimination" /> Rôle d'élimination</label>
-            <label><input type="checkbox" value="protection" /> Rôle de protection</label>
-            <label><input type="checkbox" value="voyance-major" /> Rôle de voyance majeure</label>
-            <label><input type="checkbox" value="voyance-minor" /> Rôle de voyance mineure</label>
-            <label><input type="checkbox" value="solitaire" /> Rôle solitaire</label>
-            <label><input type="checkbox" value="day" /> Rôle de mécanique de jour</label>
-          </fieldset>
-          <label class="inline">
-            <input type="checkbox" id="role-handicap" />
-            Rôle d'handicap
-          </label>
-          <label class="inline">
-            <input type="checkbox" id="role-wolf" />
-            Rôle de loup
-          </label>
-          <label>
-            Poids (N = quantité)
-            <input type="text" id="role-weight" placeholder="Ex: 2 - 0.5*N" required />
-          </label>
-          <fieldset id="role-modes">
-            <legend>Modes de jeu</legend>
-            <label><input type="checkbox" value="clair" checked /> Clair</label>
-            <label><input type="checkbox" value="flou" checked /> Flou</label>
-            <label><input type="checkbox" value="obscur" checked /> Obscur</label>
-          </fieldset>
+      <div class="roles-layout">
+        <div class="card">
+          <h2>Base de données des rôles</h2>
+          <div id="role-filters" class="filter-bar"></div>
+          <div id="roles-cards" class="roles-grid"></div>
           <div class="actions">
-            <button type="submit" class="primary" id="role-submit">Ajouter le rôle</button>
-            <button type="button" id="role-cancel" class="ghost" hidden>Annuler la modification</button>
+            <button type="button" id="export-roles" class="ghost">Exporter la base</button>
+            <label class="file-input ghost">
+              Importer une base
+              <input type="file" id="import-roles" accept="application/json" />
+            </label>
           </div>
-        </form>
+        </div>
+        <div class="card">
+          <h3 id="role-form-title">Ajouter un rôle</h3>
+          <form id="role-form" class="form">
+            <label>
+              Nom du rôle
+              <input type="text" id="role-name" required />
+            </label>
+            <label>
+              Description
+              <textarea id="role-description" rows="3"></textarea>
+            </label>
+            <label>
+              Alignement
+              <select id="role-alignment">
+                <option value="bon">Bon</option>
+                <option value="mauvais">Mauvais</option>
+              </select>
+            </label>
+            <fieldset id="role-types">
+              <legend>Type du rôle</legend>
+              <label><input type="checkbox" value="elimination" /> Rôle d'élimination</label>
+              <label><input type="checkbox" value="protection" /> Rôle de protection</label>
+              <label><input type="checkbox" value="voyance-major" /> Rôle de voyance majeure</label>
+              <label><input type="checkbox" value="voyance-minor" /> Rôle de voyance mineure</label>
+              <label><input type="checkbox" value="solitaire" /> Rôle solitaire</label>
+              <label><input type="checkbox" value="day" /> Rôle de mécanique de jour</label>
+            </fieldset>
+            <label class="inline">
+              <input type="checkbox" id="role-handicap" />
+              Rôle d'handicap
+            </label>
+            <label class="inline">
+              <input type="checkbox" id="role-wolf" />
+              Rôle de loup
+            </label>
+            <label>
+              Poids (N = quantité)
+              <input type="text" id="role-weight" placeholder="Ex: 2 - 0.5*N" required />
+            </label>
+            <fieldset id="role-modes">
+              <legend>Modes de jeu</legend>
+              <label><input type="checkbox" value="clair" checked /> Clair</label>
+              <label><input type="checkbox" value="flou" checked /> Flou</label>
+              <label><input type="checkbox" value="obscur" checked /> Obscur</label>
+            </fieldset>
+            <div class="actions">
+              <button type="submit" class="primary" id="role-submit">Ajouter le rôle</button>
+              <button type="button" id="role-cancel" class="ghost" hidden>Annuler la modification</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <h3>Ordre d'appel des rôles</h3>
+          <div id="role-order" class="role-order"></div>
+        </div>
       </div>
     </section>
   </main>
