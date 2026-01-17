@@ -821,6 +821,9 @@ const updateDraft = (updater) => {
   }
   updater(currentDraft);
   currentDraft.roles = currentDraft.roles.filter((entry) => entry.count > 0);
+  const roles = getRoles();
+  const totals = countComposition(currentDraft, roles);
+  currentDraft.players = totals.total;
   renderEditView(currentDraft);
 };
 
@@ -1269,9 +1272,8 @@ const renderRoleOrder = () => {
     const row = document.createElement("div");
     row.className = "role-order-item";
     row.dataset.role = role.id;
-    row.draggable = true;
     row.innerHTML = `
-      <span class="drag-handle" aria-label="Déplacer" data-role="${role.id}">⠿</span>
+      <span class="drag-handle" aria-label="Déplacer" draggable="true" data-role="${role.id}">⠿</span>
       <span>${role.name}</span>
       <div class="role-order-controls">
         <label class="inline">
@@ -1414,35 +1416,19 @@ if (availableRoleFilters) {
 }
 
 if (roleOrderList) {
-  const clearDragAllowance = () => {
-    roleOrderList.querySelectorAll(".role-order-item[data-allow-drag=\"true\"]").forEach((item) => {
-      delete item.dataset.allowDrag;
-    });
-  };
-
-  roleOrderList.addEventListener("pointerdown", (event) => {
+  roleOrderList.addEventListener("dragstart", (event) => {
     const handle = event.target.closest(".drag-handle");
     if (!handle) {
+      event.preventDefault();
       return;
     }
     const item = handle.closest(".role-order-item");
-    if (item) {
-      item.dataset.allowDrag = "true";
-    }
-  });
-
-  roleOrderList.addEventListener("pointerup", clearDragAllowance);
-  roleOrderList.addEventListener("pointercancel", clearDragAllowance);
-  roleOrderList.addEventListener("mouseleave", clearDragAllowance);
-
-  roleOrderList.addEventListener("dragstart", (event) => {
-    const item = event.target.closest(".role-order-item");
-    if (!item || item.dataset.allowDrag !== "true") {
+    if (!item) {
       event.preventDefault();
       return;
     }
     item.classList.add("dragging");
-    draggedRoleId = item.dataset.role;
+    draggedRoleId = handle.dataset.role;
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", draggedRoleId);
   });
@@ -1451,7 +1437,6 @@ if (roleOrderList) {
     const item = event.target.closest(".role-order-item");
     if (item) {
       item.classList.remove("dragging");
-      delete item.dataset.allowDrag;
     }
     draggedRoleId = null;
   });
