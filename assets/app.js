@@ -197,11 +197,14 @@ const importRolesInput = document.getElementById("import-roles");
 const compositionNameInput = document.getElementById("composition-name");
 const ruleWarnings = document.getElementById("rule-warnings");
 const warningList = document.getElementById("warning-list");
+const compositionOrder = document.getElementById("composition-order");
+const compositionOrder = document.getElementById("composition-order");
 
 let currentDraft = null;
 let editingRoleId = null;
 let lockedRoleIds = [];
 let activeRoleFilters = new Set();
+let draggedRoleId = null;
 
 const showScreen = (id) => {
   screens.forEach((screen) => {
@@ -798,6 +801,23 @@ const renderEditView = (composition) => {
   });
 
   renderWarnings(composition, roles);
+  const orderedRoles = roles
+    .filter((role) => composition.roles.some((entry) => entry.roleId === role.id))
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  if (orderedRoles.length) {
+    compositionOrder.innerHTML = `
+      <strong>Ordre d'appel des rôles</strong>
+      <ul>
+        ${orderedRoles
+          .map(
+            (role) => `<li>${role.name}${role.firstNightOnly ? " (Première nuit)" : ""}</li>`
+          )
+          .join("")}
+      </ul>
+    `;
+  } else {
+    compositionOrder.innerHTML = "<strong>Ordre d'appel des rôles</strong><div class=\"meta\">Aucun rôle sélectionné.</div>";
+  }
 };
 
 const updateDraft = (updater) => {
@@ -1067,7 +1087,10 @@ const renderRolesCards = () => {
       role.handicap ? ROLE_EMOJIS.flags.handicap : "",
       role.wolf ? ROLE_EMOJIS.flags.wolf : "",
       role.modes.map((mode) => ROLE_EMOJIS.modes[mode]).filter(Boolean).join(" "),
-    ].join(" | ");
+    ]
+      .map((section) => section.trim())
+      .filter(Boolean)
+      .join(" | ");
     card.innerHTML = `
       <div class="role-db-header">
         <strong>${role.name}${role.locked ? " 🔒" : ""}</strong>
@@ -1111,18 +1134,19 @@ const updateRoleOrder = (roles) => {
 const renderRoleOrder = () => {
   const roles = getRoles().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   roleOrderList.innerHTML = "";
-  roles.forEach((role, index) => {
+  roles.forEach((role) => {
     const row = document.createElement("div");
     row.className = "role-order-item";
+    row.draggable = true;
+    row.dataset.role = role.id;
     row.innerHTML = `
+      <span class="drag-handle" aria-label="Déplacer">⠿</span>
       <span>${role.name}</span>
       <div class="role-order-controls">
         <label class="inline">
           <input type="checkbox" data-role="${role.id}" class="first-night" ${role.firstNightOnly ? "checked" : ""} />
           Première nuit
         </label>
-        <button class="ghost move-up" data-role="${role.id}" ${index === 0 ? "disabled" : ""}>⬆️</button>
-        <button class="ghost move-down" data-role="${role.id}" ${index === roles.length - 1 ? "disabled" : ""}>⬇️</button>
       </div>
     `;
     roleOrderList.appendChild(row);
@@ -1233,23 +1257,48 @@ roleFilters.addEventListener("click", (event) => {
   renderRolesCards();
 });
 
-roleOrderList.addEventListener("click", (event) => {
+roleOrderList.addEventListener("dragstart", (event) => {
   const target = event.target;
-  if (!target.matches(".move-up, .move-down")) {
+  if (!target.closest(".drag-handle")) {
+    event.preventDefault();
     return;
   }
-  const roleId = target.dataset.role;
+  const item = target.closest(".role-order-item");
+  if (!item) {
+    return;
+  }
+  draggedRoleId = item.dataset.role;
+  item.classList.add("dragging");
+  event.dataTransfer.effectAllowed = "move";
+});
+
+roleOrderList.addEventListener("dragend", (event) => {
+  const item = event.target.closest(".role-order-item");
+  if (item) {
+    item.classList.remove("dragging");
+  }
+  draggedRoleId = null;
+});
+
+roleOrderList.addEventListener("dragover", (event) => {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
+});
+
+roleOrderList.addEventListener("drop", (event) => {
+  event.preventDefault();
+  const targetItem = event.target.closest(".role-order-item");
+  if (!targetItem || !draggedRoleId) {
+    return;
+  }
   const roles = getRoles().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  const index = roles.findIndex((role) => role.id === roleId);
-  if (index === -1) {
+  const fromIndex = roles.findIndex((role) => role.id === draggedRoleId);
+  const toIndex = roles.findIndex((role) => role.id === targetItem.dataset.role);
+  if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
     return;
   }
-  const swapIndex = target.classList.contains("move-up") ? index - 1 : index + 1;
-  if (swapIndex < 0 || swapIndex >= roles.length) {
-    return;
-  }
-  const [current] = roles.splice(index, 1);
-  roles.splice(swapIndex, 0, current);
+  const [moved] = roles.splice(fromIndex, 1);
+  roles.splice(toIndex, 0, moved);
   updateRoleOrder(roles);
   renderRolesCards();
   renderRoleOrder();

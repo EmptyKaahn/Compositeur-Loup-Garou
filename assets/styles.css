@@ -320,6 +320,19 @@ legend {
   color: var(--bad);
 }
 
+.order-preview {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: #f9f9fd;
+  border: 1px solid var(--border);
+}
+
+.order-preview ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+}
+
 .saved-list {
   display: grid;
   gap: 1rem;
@@ -421,6 +434,16 @@ legend {
   display: flex;
   gap: 0.35rem;
   align-items: center;
+}
+
+.drag-handle {
+  cursor: grab;
+  font-size: 1.1rem;
+  user-select: none;
+}
+
+.role-order-item.dragging {
+  opacity: 0.6;
 }
 
 .role-db-actions {
