@@ -208,6 +208,7 @@ let lockedRoleIds = [];
 let activeRoleFilters = new Set();
 let activeAvailableFilters = new Set();
 let draggedRoleId = null;
+let dragHandleRoleId = null;
 
 const showScreen = (id) => {
   screens.forEach((screen) => {
@@ -1272,8 +1273,9 @@ const renderRoleOrder = () => {
     const row = document.createElement("div");
     row.className = "role-order-item";
     row.dataset.role = role.id;
+    row.draggable = true;
     row.innerHTML = `
-      <span class="drag-handle" aria-label="Déplacer" draggable="true" data-role="${role.id}">⠿</span>
+      <span class="drag-handle" aria-label="Déplacer" data-role="${role.id}">⠿</span>
       <span>${role.name}</span>
       <div class="role-order-controls">
         <label class="inline">
@@ -1416,19 +1418,30 @@ if (availableRoleFilters) {
 }
 
 if (roleOrderList) {
-  roleOrderList.addEventListener("dragstart", (event) => {
+  const resetDragHandle = () => {
+    dragHandleRoleId = null;
+  };
+
+  roleOrderList.addEventListener("pointerdown", (event) => {
     const handle = event.target.closest(".drag-handle");
     if (!handle) {
-      event.preventDefault();
       return;
     }
-    const item = handle.closest(".role-order-item");
-    if (!item) {
+    dragHandleRoleId = handle.dataset.role;
+  });
+
+  roleOrderList.addEventListener("pointerup", resetDragHandle);
+  roleOrderList.addEventListener("pointercancel", resetDragHandle);
+  roleOrderList.addEventListener("mouseleave", resetDragHandle);
+
+  roleOrderList.addEventListener("dragstart", (event) => {
+    const item = event.target.closest(".role-order-item");
+    if (!item || dragHandleRoleId !== item.dataset.role) {
       event.preventDefault();
       return;
     }
     item.classList.add("dragging");
-    draggedRoleId = handle.dataset.role;
+    draggedRoleId = item.dataset.role;
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", draggedRoleId);
   });
@@ -1439,6 +1452,7 @@ if (roleOrderList) {
       item.classList.remove("dragging");
     }
     draggedRoleId = null;
+    resetDragHandle();
   });
 
   roleOrderList.addEventListener("dragover", (event) => {
