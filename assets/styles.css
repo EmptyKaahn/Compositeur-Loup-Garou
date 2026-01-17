@@ -450,6 +450,10 @@ legend {
   align-items: center;
 }
 
+.role-db-emojis .add-role-btn {
+  margin-left: auto;
+}
+
 .role-db-actions {
   display: flex;
   gap: 0.5rem;

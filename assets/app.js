@@ -1239,10 +1239,12 @@ const renderAvailableRoles = (roles) => {
         <strong>${role.name}</strong>
         <div class="role-card-actions">
           <span class="role-weight">Poids ${role.weight}</span>
-          <button class="add-role-btn" data-role="${role.id}" aria-label="Ajouter ${role.name}">+</button>
         </div>
       </div>
-      <div class="role-db-emojis"><span>${emojiSections}</span></div>
+      <div class="role-db-emojis">
+        <span>${emojiSections}</span>
+        <button class="add-role-btn" data-role="${role.id}" aria-label="Ajouter ${role.name}">+</button>
+      </div>
       <div class="role-db-description" hidden>${role.description || "Aucune description."}</div>
     `;
     availableRoles.appendChild(card);
@@ -1267,8 +1269,9 @@ const renderRoleOrder = () => {
     const row = document.createElement("div");
     row.className = "role-order-item";
     row.dataset.role = role.id;
+    row.draggable = true;
     row.innerHTML = `
-      <span class="drag-handle" aria-label="Déplacer" draggable="true" data-role="${role.id}">⠿</span>
+      <span class="drag-handle" aria-label="Déplacer" data-role="${role.id}">⠿</span>
       <span>${role.name}</span>
       <div class="role-order-controls">
         <label class="inline">
@@ -1411,29 +1414,44 @@ if (availableRoleFilters) {
 }
 
 if (roleOrderList) {
+  const clearDragAllowance = () => {
+    roleOrderList.querySelectorAll(".role-order-item[data-allow-drag=\"true\"]").forEach((item) => {
+      delete item.dataset.allowDrag;
+    });
+  };
+
+  roleOrderList.addEventListener("pointerdown", (event) => {
+    const handle = event.target.closest(".drag-handle");
+    if (!handle) {
+      return;
+    }
+    const item = handle.closest(".role-order-item");
+    if (item) {
+      item.dataset.allowDrag = "true";
+    }
+  });
+
+  roleOrderList.addEventListener("pointerup", clearDragAllowance);
+  roleOrderList.addEventListener("pointercancel", clearDragAllowance);
+  roleOrderList.addEventListener("mouseleave", clearDragAllowance);
+
   roleOrderList.addEventListener("dragstart", (event) => {
-    const target = event.target;
-    if (!target.matches(".drag-handle")) {
+    const item = event.target.closest(".role-order-item");
+    if (!item || item.dataset.allowDrag !== "true") {
       event.preventDefault();
       return;
     }
-    const roleId = target.dataset.role;
-    if (!roleId) {
-      return;
-    }
-    const item = target.closest(".role-order-item");
-    if (item) {
-      item.classList.add("dragging");
-    }
-    draggedRoleId = roleId;
+    item.classList.add("dragging");
+    draggedRoleId = item.dataset.role;
     event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", roleId);
+    event.dataTransfer.setData("text/plain", draggedRoleId);
   });
 
   roleOrderList.addEventListener("dragend", (event) => {
     const item = event.target.closest(".role-order-item");
     if (item) {
       item.classList.remove("dragging");
+      delete item.dataset.allowDrag;
     }
     draggedRoleId = null;
   });
