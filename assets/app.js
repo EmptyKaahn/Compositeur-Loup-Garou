@@ -45,6 +45,7 @@ const coreRoles = [
     locked: true,
     order: 0,
     firstNightOnly: false,
+    skipNight: false,
   },
   {
     id: "loup-garou",
@@ -59,6 +60,7 @@ const coreRoles = [
     locked: true,
     order: 1,
     firstNightOnly: false,
+    skipNight: false,
   },
 ];
 
@@ -266,6 +268,7 @@ const normalizeRoles = (roles) =>
       locked: role.locked ?? CORE_ROLE_IDS.includes(role.id),
       order: role.order ?? index,
       firstNightOnly: role.firstNightOnly ?? false,
+      skipNight: role.skipNight ?? false,
     };
   });
 
@@ -277,6 +280,7 @@ const ensureCoreRoles = (roles) => {
       ...coreRole,
       order: existing?.order ?? coreRole.order,
       firstNightOnly: existing?.firstNightOnly ?? coreRole.firstNightOnly,
+      skipNight: existing?.skipNight ?? coreRole.skipNight,
     });
   });
   return Array.from(map.values());
@@ -813,11 +817,12 @@ const renderEditView = (composition) => {
     const orderedRoles = roles
       .filter((role) => composition.roles.some((entry) => entry.roleId === role.id))
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    if (orderedRoles.length) {
+    const filteredOrder = orderedRoles.filter((role) => !role.skipNight);
+    if (filteredOrder.length) {
       compositionOrder.innerHTML = `
         <strong>Ordre d'appel des rôles</strong>
         <ul>
-          ${orderedRoles
+          ${filteredOrder
             .map(
               (role) => `<li>${role.name}${role.firstNightOnly ? " (Première nuit)" : ""}</li>`
             )
@@ -1049,10 +1054,29 @@ const renderSavedCompositions = () => {
     const titleInput = clone.querySelector(".saved-title");
     const meta = clone.querySelector(".saved-meta");
     const warningIcon = clone.querySelector(".saved-warning");
+    const details = clone.querySelector(".saved-details");
     titleInput.value = composition.name;
     meta.textContent = `${composition.players} joueurs · ${MODE_SHORT_LABELS[composition.mode]}`;
     const warnings = getRuleWarnings(composition, roles, { includeMode: true });
     warningIcon.hidden = warnings.length === 0;
+    const roleSummary = composition.roles
+      .map((entry) => {
+        const role = roles.find((item) => item.id === entry.roleId);
+        return role ? `${entry.count} × ${role.name}` : null;
+      })
+      .filter(Boolean)
+      .join(", ");
+    const orderedRoles = roles
+      .filter((role) => composition.roles.some((entry) => entry.roleId === role.id))
+      .filter((role) => !role.skipNight)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((role) => `${role.name}${role.firstNightOnly ? " (Première nuit)" : ""}`);
+    details.innerHTML = `
+      <strong>Rôles</strong>
+      <div>${roleSummary || "Aucun rôle."}</div>
+      <strong>Ordre d'appel</strong>
+      <ul>${orderedRoles.map((roleName) => `<li>${roleName}</li>`).join("")}</ul>
+    `;
     titleInput.addEventListener("change", () => {
       composition.name = titleInput.value.trim() || composition.name;
       persistCompositions(compositions);
@@ -1072,6 +1096,9 @@ const renderSavedCompositions = () => {
       compositions.splice(index, 1);
       persistCompositions(compositions);
       renderSavedCompositions();
+    });
+    clone.querySelector(".show-details").addEventListener("click", () => {
+      details.hidden = !details.hidden;
     });
     savedList.appendChild(card);
   });
@@ -1120,20 +1147,26 @@ const renderRolesCards = () => {
       .map((section) => section.trim())
       .filter(Boolean)
       .join(" | ");
+    const emojiRow = `
+      <div class="role-db-emojis">
+        <span>${emojiSections}</span>
+        <div class="role-db-actions">
+          <button class="edit-button" type="button" data-role="${role.id}" aria-label="Éditer ${role.name}" ${
+      role.locked ? "disabled" : ""
+    }>✏️</button>
+          <button class="delete-button" type="button" data-role="${role.id}" aria-label="Supprimer ${role.name}" ${
+      role.locked ? "disabled" : ""
+    }>🗑️</button>
+        </div>
+      </div>
+    `;
     card.innerHTML = `
       <div class="role-db-header">
         <strong>${role.name}${role.locked ? " 🔒" : ""}</strong>
         <span class="role-weight">Poids ${role.weight}</span>
       </div>
-      <div class="role-db-emojis">${emojiSections}</div>
-      <div class="role-db-actions">
-        <button class="edit-button" type="button" data-role="${role.id}" aria-label="Éditer ${role.name}" ${
-      role.locked ? "disabled" : ""
-    }>✏️</button>
-        <button class="delete-button" type="button" data-role="${role.id}" aria-label="Supprimer ${role.name}" ${
-      role.locked ? "disabled" : ""
-    }>🗑️</button>
-      </div>
+      ${emojiRow}
+      <div class="role-db-description" hidden>${role.description || "Aucune description."}</div>
     `;
     rolesCards.appendChild(card);
   });
@@ -1181,6 +1214,10 @@ const renderRoleOrder = () => {
         <label class="inline">
           <input type="checkbox" data-role="${role.id}" class="first-night" ${role.firstNightOnly ? "checked" : ""} />
           Première nuit
+        </label>
+        <label class="inline">
+          <input type="checkbox" data-role="${role.id}" class="skip-night" ${role.skipNight ? "checked" : ""} />
+          Pas appelé la nuit
         </label>
       </div>
     `;
@@ -1250,6 +1287,7 @@ roleForm.addEventListener("submit", (event) => {
       target.handicap = isSolitaire ? false : handicap;
       target.wolf = isSolitaire ? false : wolf;
       target.firstNightOnly = target.firstNightOnly ?? false;
+      target.skipNight = target.skipNight ?? false;
     }
   } else {
     roles.push({
@@ -1263,6 +1301,7 @@ roleForm.addEventListener("submit", (event) => {
       handicap: isSolitaire ? false : handicap,
       wolf: isSolitaire ? false : wolf,
       firstNightOnly: false,
+      skipNight: false,
     });
   }
   writeStorage(STORAGE_KEYS.roles, ensureCoreRoles(normalizeRoles(roles)));
@@ -1346,7 +1385,7 @@ if (roleOrderList) {
 if (roleOrderList) {
   roleOrderList.addEventListener("change", (event) => {
     const target = event.target;
-    if (!target.matches(".first-night")) {
+    if (!target.matches(".first-night, .skip-night")) {
       return;
     }
     const roleId = target.dataset.role;
@@ -1355,7 +1394,12 @@ if (roleOrderList) {
     if (!role) {
       return;
     }
-    role.firstNightOnly = target.checked;
+    if (target.classList.contains("first-night")) {
+      role.firstNightOnly = target.checked;
+    }
+    if (target.classList.contains("skip-night")) {
+      role.skipNight = target.checked;
+    }
     writeStorage(STORAGE_KEYS.roles, ensureCoreRoles(normalizeRoles(roles)));
   });
 }
@@ -1363,56 +1407,65 @@ if (roleOrderList) {
 if (rolesCards) {
   rolesCards.addEventListener("click", (event) => {
     const target = event.target;
-    if (!target.matches(".edit-button, .delete-button")) {
-      return;
-  }
-  const roleId = target.dataset.role;
-  const roles = getRoles();
-  const role = roles.find((item) => item.id === roleId);
-  if (!role || role.locked) {
-    return;
-  }
-  if (target.matches(".delete-button")) {
-    if (!window.confirm(`Supprimer le rôle « ${role.name} » ?`)) {
+    const card = target.closest(".role-db-card");
+    if (!card) {
       return;
     }
-    const updatedRoles = roles.filter((item) => item.id !== roleId);
-    writeStorage(STORAGE_KEYS.roles, ensureCoreRoles(normalizeRoles(updatedRoles)));
-    if (editingRoleId === roleId) {
-      resetRoleForm();
+    if (target.matches(".edit-button, .delete-button")) {
+      const roleId = target.dataset.role;
+      const roles = getRoles();
+      const role = roles.find((item) => item.id === roleId);
+      if (!role || role.locked) {
+        return;
+      }
+      if (target.matches(".delete-button")) {
+        if (!window.confirm(`Supprimer le rôle « ${role.name} » ?`)) {
+          return;
+        }
+        const updatedRoles = roles.filter((item) => item.id !== roleId);
+        writeStorage(STORAGE_KEYS.roles, ensureCoreRoles(normalizeRoles(updatedRoles)));
+        if (editingRoleId === roleId) {
+          resetRoleForm();
+        }
+        const compositions = getCompositions();
+        const updatedCompositions = compositions.map((composition) => ({
+          ...composition,
+          roles: composition.roles.filter((entry) => entry.roleId !== roleId),
+        }));
+        persistCompositions(updatedCompositions);
+        if (currentDraft) {
+          currentDraft.roles = currentDraft.roles.filter((entry) => entry.roleId !== roleId);
+          renderEditView(currentDraft);
+        }
+        renderRolesCards();
+        renderRoleOrder();
+        renderLockRoleOptions();
+        renderLockedRoles();
+        renderSavedCompositions();
+        return;
+      }
+      editingRoleId = role.id;
+      document.getElementById("role-name").value = role.name;
+      document.getElementById("role-description").value = role.description;
+      document.getElementById("role-alignment").value = role.alignment;
+      document.getElementById("role-weight").value = role.weight;
+      document.getElementById("role-handicap").checked = role.handicap;
+      document.getElementById("role-wolf").checked = role.wolf;
+      roleForm.querySelectorAll("#role-types input").forEach((checkbox) => {
+        checkbox.checked = role.types.includes(checkbox.value);
+      });
+      roleForm.querySelectorAll("#role-modes input").forEach((checkbox) => {
+        checkbox.checked = role.modes.includes(checkbox.value);
+      });
+      toggleSolitaireRestrictions();
+      setRoleFormMode("edit");
+      return;
     }
-    const compositions = getCompositions();
-    const updatedCompositions = compositions.map((composition) => ({
-      ...composition,
-      roles: composition.roles.filter((entry) => entry.roleId !== roleId),
-    }));
-    persistCompositions(updatedCompositions);
-    if (currentDraft) {
-      currentDraft.roles = currentDraft.roles.filter((entry) => entry.roleId !== roleId);
-      renderEditView(currentDraft);
+    const description = card.querySelector(".role-db-description");
+    if (!description) {
+      return;
     }
-    renderRolesCards();
-    renderRoleOrder();
-    renderLockRoleOptions();
-    renderLockedRoles();
-    renderSavedCompositions();
-    return;
-  }
-  editingRoleId = role.id;
-  document.getElementById("role-name").value = role.name;
-  document.getElementById("role-description").value = role.description;
-  document.getElementById("role-alignment").value = role.alignment;
-  document.getElementById("role-weight").value = role.weight;
-  document.getElementById("role-handicap").checked = role.handicap;
-  document.getElementById("role-wolf").checked = role.wolf;
-  roleForm.querySelectorAll("#role-types input").forEach((checkbox) => {
-    checkbox.checked = role.types.includes(checkbox.value);
-  });
-  roleForm.querySelectorAll("#role-modes input").forEach((checkbox) => {
-    checkbox.checked = role.modes.includes(checkbox.value);
-  });
-  toggleSolitaireRestrictions();
-  setRoleFormMode("edit");
+    description.hidden = !description.hidden;
   });
 }
 

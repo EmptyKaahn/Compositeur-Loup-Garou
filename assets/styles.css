@@ -350,6 +350,18 @@ legend {
   align-items: center;
 }
 
+.saved-details {
+  width: 100%;
+  border-top: 1px dashed var(--border);
+  padding-top: 0.75rem;
+  color: var(--muted);
+}
+
+.saved-details ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+}
+
 .saved-title {
   font-size: 1.1rem;
   font-weight: 700;
@@ -386,6 +398,7 @@ legend {
   display: grid;
   gap: 0.5rem;
   width: 100%;
+  cursor: pointer;
 }
 
 .role-db-header {
@@ -407,11 +420,33 @@ legend {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+  align-items: center;
 }
 
 .role-db-actions {
   display: flex;
   gap: 0.5rem;
+  margin-left: auto;
+}
+
+.role-db-actions button {
+  border: none;
+  background: transparent;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.role-db-actions .edit-button {
+  color: var(--accent-strong);
+}
+
+.role-db-actions .delete-button {
+  color: var(--bad);
+}
+
+.role-db-description {
+  color: var(--muted);
+  line-height: 1.4;
 }
 
 .role-order {
@@ -444,27 +479,6 @@ legend {
 
 .role-order-item.dragging {
   opacity: 0.6;
-}
-
-.role-db-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.role-db-actions .edit-button,
-.role-db-actions .delete-button {
-  border: none;
-  background: transparent;
-  font-size: 1.1rem;
-  cursor: pointer;
-}
-
-.role-db-actions .edit-button {
-  color: var(--accent-strong);
-}
-
-.role-db-actions .delete-button {
-  color: var(--bad);
 }
 
 .ghost {
