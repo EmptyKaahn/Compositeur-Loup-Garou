@@ -208,7 +208,6 @@ let lockedRoleIds = [];
 let activeRoleFilters = new Set();
 let activeAvailableFilters = new Set();
 let draggedRoleId = null;
-let dragHandleRoleId = null;
 
 const showScreen = (id) => {
   screens.forEach((screen) => {
@@ -1418,25 +1417,9 @@ if (availableRoleFilters) {
 }
 
 if (roleOrderList) {
-  const resetDragHandle = () => {
-    dragHandleRoleId = null;
-  };
-
-  roleOrderList.addEventListener("pointerdown", (event) => {
-    const handle = event.target.closest(".drag-handle");
-    if (!handle) {
-      return;
-    }
-    dragHandleRoleId = handle.dataset.role;
-  });
-
-  roleOrderList.addEventListener("pointerup", resetDragHandle);
-  roleOrderList.addEventListener("pointercancel", resetDragHandle);
-  roleOrderList.addEventListener("mouseleave", resetDragHandle);
-
   roleOrderList.addEventListener("dragstart", (event) => {
     const item = event.target.closest(".role-order-item");
-    if (!item || dragHandleRoleId !== item.dataset.role) {
+    if (!item) {
       event.preventDefault();
       return;
     }
@@ -1452,7 +1435,6 @@ if (roleOrderList) {
       item.classList.remove("dragging");
     }
     draggedRoleId = null;
-    resetDragHandle();
   });
 
   roleOrderList.addEventListener("dragover", (event) => {
