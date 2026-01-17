@@ -266,6 +266,33 @@ legend {
   overflow-wrap: normal;
 }
 
+.role-card-header .role-card-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+
+.role-db-header .role-card-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+
+.role-db-header .role-card-actions .role-weight {
+  margin-left: 0;
+}
+
+.add-role-btn {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.2rem 0.6rem;
+  background: #ffffff;
+  cursor: pointer;
+  font-weight: 700;
+}
+
 .role-weight {
   white-space: nowrap;
   font-weight: 700;
