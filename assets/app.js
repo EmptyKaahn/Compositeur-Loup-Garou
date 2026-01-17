@@ -198,7 +198,6 @@ const compositionNameInput = document.getElementById("composition-name");
 const ruleWarnings = document.getElementById("rule-warnings");
 const warningList = document.getElementById("warning-list");
 const compositionOrder = document.getElementById("composition-order");
-const compositionOrder = document.getElementById("composition-order");
 
 let currentDraft = null;
 let editingRoleId = null;
@@ -705,6 +704,9 @@ const updatePrecompView = (composition, roles) => {
   if (!composition) {
     return;
   }
+  if (!precompList) {
+    return;
+  }
   precompList.innerHTML = "";
   const balance = computeBalance(composition, roles);
   precompMeta.textContent = `${composition.players} joueurs · ${MODE_LABELS[composition.mode]} · Équilibrage: ${balance.toFixed(2)}`;
@@ -749,6 +751,9 @@ const renderEditView = (composition) => {
     <strong>Répartition :</strong> ${totals.good} Bon · ${totals.bad} Mauvais · ${totals.villagers} Villageois · ${totals.wolves} Loups
   `;
 
+  if (!editRolesList) {
+    return;
+  }
   editRolesList.innerHTML = "";
   composition.roles.forEach((entry) => {
     const role = roles.find((item) => item.id === entry.roleId);
@@ -777,6 +782,9 @@ const renderEditView = (composition) => {
     editRolesList.appendChild(listItem);
   });
 
+  if (!availableRoles) {
+    return;
+  }
   availableRoles.innerHTML = "";
   roles.forEach((role) => {
     const card = document.createElement("div");
@@ -801,22 +809,25 @@ const renderEditView = (composition) => {
   });
 
   renderWarnings(composition, roles);
-  const orderedRoles = roles
-    .filter((role) => composition.roles.some((entry) => entry.roleId === role.id))
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  if (orderedRoles.length) {
-    compositionOrder.innerHTML = `
-      <strong>Ordre d'appel des rôles</strong>
-      <ul>
-        ${orderedRoles
-          .map(
-            (role) => `<li>${role.name}${role.firstNightOnly ? " (Première nuit)" : ""}</li>`
-          )
-          .join("")}
-      </ul>
-    `;
-  } else {
-    compositionOrder.innerHTML = "<strong>Ordre d'appel des rôles</strong><div class=\"meta\">Aucun rôle sélectionné.</div>";
+  if (compositionOrder) {
+    const orderedRoles = roles
+      .filter((role) => composition.roles.some((entry) => entry.roleId === role.id))
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    if (orderedRoles.length) {
+      compositionOrder.innerHTML = `
+        <strong>Ordre d'appel des rôles</strong>
+        <ul>
+          ${orderedRoles
+            .map(
+              (role) => `<li>${role.name}${role.firstNightOnly ? " (Première nuit)" : ""}</li>`
+            )
+            .join("")}
+        </ul>
+      `;
+    } else {
+      compositionOrder.innerHTML =
+        "<strong>Ordre d'appel des rôles</strong><div class=\"meta\">Aucun rôle sélectionné.</div>";
+    }
   }
 };
 
@@ -831,6 +842,9 @@ const updateDraft = (updater) => {
 
 const renderLockedRoles = () => {
   const roles = getRoles();
+  if (!lockedRolesList) {
+    return;
+  }
   lockedRolesList.innerHTML = "";
   const existingIds = lockedRoleIds.filter((roleId) => roles.some((role) => role.id === roleId));
   if (existingIds.length !== lockedRoleIds.length) {
@@ -856,6 +870,9 @@ const renderLockedRoles = () => {
 
 const renderLockRoleOptions = () => {
   const roles = getRoles();
+  if (!lockRoleSelect) {
+    return;
+  }
   lockRoleSelect.innerHTML = "";
   roles.forEach((role) => {
     const option = document.createElement("option");
@@ -961,40 +978,49 @@ availableRoles.addEventListener("click", (event) => {
   });
 });
 
-precompList.addEventListener("click", (event) => {
-  const target = event.target;
-  if (!target.matches(".lock-role")) {
-    return;
-  }
-  const roleId = target.dataset.role;
-  if (!roleId || lockedRoleIds.includes(roleId)) {
-    return;
-  }
-  lockedRoleIds = [...lockedRoleIds, roleId];
-  renderLockedRoles();
-});
+if (precompList) {
+  precompList.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!target.matches(".lock-role")) {
+      return;
+    }
+    const roleId = target.dataset.role;
+    if (!roleId || lockedRoleIds.includes(roleId)) {
+      return;
+    }
+    lockedRoleIds = [...lockedRoleIds, roleId];
+    renderLockedRoles();
+  });
+}
 
-addLockedRoleButton.addEventListener("click", () => {
-  const roleId = lockRoleSelect.value;
-  if (!roleId || lockedRoleIds.includes(roleId)) {
-    return;
-  }
-  lockedRoleIds = [...lockedRoleIds, roleId];
-  renderLockedRoles();
-});
+if (addLockedRoleButton) {
+  addLockedRoleButton.addEventListener("click", () => {
+    if (!lockRoleSelect) {
+      return;
+    }
+    const roleId = lockRoleSelect.value;
+    if (!roleId || lockedRoleIds.includes(roleId)) {
+      return;
+    }
+    lockedRoleIds = [...lockedRoleIds, roleId];
+    renderLockedRoles();
+  });
+}
 
-lockedRolesList.addEventListener("click", (event) => {
-  const target = event.target;
-  if (!target.matches("button")) {
-    return;
-  }
-  const roleId = target.dataset.role;
-  if (!roleId) {
-    return;
-  }
-  lockedRoleIds = lockedRoleIds.filter((id) => id !== roleId);
-  renderLockedRoles();
-});
+if (lockedRolesList) {
+  lockedRolesList.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!target.matches("button")) {
+      return;
+    }
+    const roleId = target.dataset.role;
+    if (!roleId) {
+      return;
+    }
+    lockedRoleIds = lockedRoleIds.filter((id) => id !== roleId);
+    renderLockedRoles();
+  });
+}
 
 saveCompositionButton.addEventListener("click", () => {
   if (!currentDraft) {
@@ -1056,6 +1082,9 @@ const renderSavedCompositions = () => {
 
 const renderRolesCards = () => {
   const roles = getRoles();
+  if (!rolesCards) {
+    return;
+  }
   rolesCards.innerHTML = "";
   const filteredRoles = roles.filter((role) => {
     if (!activeRoleFilters.size) {
@@ -1111,6 +1140,9 @@ const renderRolesCards = () => {
 };
 
 const renderRoleFilters = () => {
+  if (!roleFilters) {
+    return;
+  }
   roleFilters.innerHTML = "";
   ROLE_FILTERS.forEach((filter) => {
     const button = document.createElement("button");
@@ -1133,6 +1165,9 @@ const updateRoleOrder = (roles) => {
 
 const renderRoleOrder = () => {
   const roles = getRoles().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  if (!roleOrderList) {
+    return;
+  }
   roleOrderList.innerHTML = "";
   roles.forEach((role) => {
     const row = document.createElement("div");
@@ -1242,87 +1277,94 @@ roleCancel.addEventListener("click", () => {
   resetRoleForm();
 });
 
-roleFilters.addEventListener("click", (event) => {
-  const target = event.target;
-  if (!target.matches(".filter-chip")) {
-    return;
-  }
-  const filterId = target.dataset.filter;
-  if (activeRoleFilters.has(filterId)) {
-    activeRoleFilters.delete(filterId);
-  } else {
-    activeRoleFilters.add(filterId);
-  }
-  renderRoleFilters();
-  renderRolesCards();
-});
+if (roleFilters) {
+  roleFilters.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!target.matches(".filter-chip")) {
+      return;
+    }
+    const filterId = target.dataset.filter;
+    if (activeRoleFilters.has(filterId)) {
+      activeRoleFilters.delete(filterId);
+    } else {
+      activeRoleFilters.add(filterId);
+    }
+    renderRoleFilters();
+    renderRolesCards();
+  });
+}
 
-roleOrderList.addEventListener("dragstart", (event) => {
-  const target = event.target;
-  if (!target.closest(".drag-handle")) {
+if (roleOrderList) {
+  roleOrderList.addEventListener("dragstart", (event) => {
+    const target = event.target;
+    if (!target.closest(".drag-handle")) {
+      event.preventDefault();
+      return;
+    }
+    const item = target.closest(".role-order-item");
+    if (!item) {
+      return;
+    }
+    draggedRoleId = item.dataset.role;
+    item.classList.add("dragging");
+    event.dataTransfer.effectAllowed = "move";
+  });
+
+  roleOrderList.addEventListener("dragend", (event) => {
+    const item = event.target.closest(".role-order-item");
+    if (item) {
+      item.classList.remove("dragging");
+    }
+    draggedRoleId = null;
+  });
+
+  roleOrderList.addEventListener("dragover", (event) => {
     event.preventDefault();
-    return;
-  }
-  const item = target.closest(".role-order-item");
-  if (!item) {
-    return;
-  }
-  draggedRoleId = item.dataset.role;
-  item.classList.add("dragging");
-  event.dataTransfer.effectAllowed = "move";
-});
+    event.dataTransfer.dropEffect = "move";
+  });
 
-roleOrderList.addEventListener("dragend", (event) => {
-  const item = event.target.closest(".role-order-item");
-  if (item) {
-    item.classList.remove("dragging");
-  }
-  draggedRoleId = null;
-});
+  roleOrderList.addEventListener("drop", (event) => {
+    event.preventDefault();
+    const targetItem = event.target.closest(".role-order-item");
+    if (!targetItem || !draggedRoleId) {
+      return;
+    }
+    const roles = getRoles().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const fromIndex = roles.findIndex((role) => role.id === draggedRoleId);
+    const toIndex = roles.findIndex((role) => role.id === targetItem.dataset.role);
+    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
+      return;
+    }
+    const [moved] = roles.splice(fromIndex, 1);
+    roles.splice(toIndex, 0, moved);
+    updateRoleOrder(roles);
+    renderRolesCards();
+    renderRoleOrder();
+  });
+}
 
-roleOrderList.addEventListener("dragover", (event) => {
-  event.preventDefault();
-  event.dataTransfer.dropEffect = "move";
-});
+if (roleOrderList) {
+  roleOrderList.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!target.matches(".first-night")) {
+      return;
+    }
+    const roleId = target.dataset.role;
+    const roles = getRoles();
+    const role = roles.find((item) => item.id === roleId);
+    if (!role) {
+      return;
+    }
+    role.firstNightOnly = target.checked;
+    writeStorage(STORAGE_KEYS.roles, ensureCoreRoles(normalizeRoles(roles)));
+  });
+}
 
-roleOrderList.addEventListener("drop", (event) => {
-  event.preventDefault();
-  const targetItem = event.target.closest(".role-order-item");
-  if (!targetItem || !draggedRoleId) {
-    return;
-  }
-  const roles = getRoles().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  const fromIndex = roles.findIndex((role) => role.id === draggedRoleId);
-  const toIndex = roles.findIndex((role) => role.id === targetItem.dataset.role);
-  if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
-    return;
-  }
-  const [moved] = roles.splice(fromIndex, 1);
-  roles.splice(toIndex, 0, moved);
-  updateRoleOrder(roles);
-  renderRolesCards();
-  renderRoleOrder();
-});
-
-roleOrderList.addEventListener("change", (event) => {
-  const target = event.target;
-  if (!target.matches(".first-night")) {
-    return;
-  }
-  const roleId = target.dataset.role;
-  const roles = getRoles();
-  const role = roles.find((item) => item.id === roleId);
-  if (!role) {
-    return;
-  }
-  role.firstNightOnly = target.checked;
-  writeStorage(STORAGE_KEYS.roles, ensureCoreRoles(normalizeRoles(roles)));
-});
-
-rolesCards.addEventListener("click", (event) => {
-  const target = event.target;
-  if (!target.matches(".edit-button, .delete-button")) {
-    return;
+if (rolesCards) {
+  rolesCards.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!target.matches(".edit-button, .delete-button")) {
+      return;
   }
   const roleId = target.dataset.role;
   const roles = getRoles();
@@ -1371,7 +1413,8 @@ rolesCards.addEventListener("click", (event) => {
   });
   toggleSolitaireRestrictions();
   setRoleFormMode("edit");
-});
+  });
+}
 
 const handleRolesImport = async (file) => {
   if (!file) {
