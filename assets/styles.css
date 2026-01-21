@@ -20,6 +20,9 @@ body {
   font-family: "Inter", "Segoe UI", system-ui, sans-serif;
   color: var(--text);
   background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .app-header {
@@ -31,6 +34,8 @@ body {
   padding: 1.5rem 2rem;
   background: var(--card);
   border-bottom: 1px solid var(--border);
+  width: 100%;
+  max-width: 480px;
 }
 
 .main-nav {
@@ -62,6 +67,12 @@ button:disabled {
 
 main {
   padding: 2rem;
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 .screen {
@@ -69,7 +80,7 @@ main {
 }
 
 .screen.active {
-  display: block;
+  display: contents;
 }
 
 .card {
@@ -77,12 +88,27 @@ main {
   border-radius: 16px;
   padding: 1.5rem;
   box-shadow: 0 12px 30px rgba(30, 29, 61, 0.08);
+  width: 100%;
+  max-width: 480px;
+  flex: 1 1 480px;
 }
 
 .grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 1.5rem;
+  width: 100%;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.roles-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  width: 100%;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 .form {
@@ -118,6 +144,13 @@ fieldset {
   padding: 0.75rem 1rem;
   display: grid;
   gap: 0.5rem;
+}
+
+fieldset label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
 }
 
 legend {
@@ -156,6 +189,11 @@ legend {
   padding: 0;
   border-radius: 50%;
   font-weight: 700;
+}
+
+.counter input {
+  width: 64px;
+  text-align: center;
 }
 
 .meta {
@@ -214,12 +252,112 @@ legend {
   gap: 0.35rem;
 }
 
+.role-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.role-card-header strong {
+  flex: 1 1 220px;
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.role-card-header .role-card-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+
+.role-db-header .role-card-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+
+.role-db-header .role-card-actions .role-weight {
+  margin-left: 0;
+}
+
+.add-role-btn {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.2rem 0.6rem;
+  background: #ffffff;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.role-weight {
+  white-space: nowrap;
+  font-weight: 700;
+  color: var(--accent-strong);
+  margin-left: auto;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.filter-chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.35rem 0.6rem;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.filter-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 .balance {
   margin: 1rem 0;
   padding: 0.75rem 1rem;
   border-radius: 12px;
   background: #f0f2ff;
   border: 1px solid var(--border);
+}
+
+.warnings {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: #fff3f3;
+  border: 1px solid rgba(161, 61, 61, 0.2);
+}
+
+.warnings h4 {
+  margin: 0 0 0.5rem;
+}
+
+.warnings ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--bad);
+}
+
+.order-preview {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: #f9f9fd;
+  border: 1px solid var(--border);
+}
+
+.order-preview ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
 }
 
 .saved-list {
@@ -236,6 +374,19 @@ legend {
   border-radius: 12px;
   padding: 1rem;
   background: #ffffff;
+  align-items: center;
+}
+
+.saved-details {
+  width: 100%;
+  border-top: 1px dashed var(--border);
+  padding-top: 0.75rem;
+  color: var(--muted);
+}
+
+.saved-details ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
 }
 
 .saved-title {
@@ -254,37 +405,111 @@ legend {
   color: var(--muted);
 }
 
-.table-wrapper {
-  overflow-x: auto;
+.saved-warning {
+  font-size: 1.2rem;
+  color: var(--bad);
+}
+
+.roles-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
   margin-bottom: 1.5rem;
 }
 
-th,
-td {
-  text-align: left;
-  padding: 0.6rem 0.8rem;
-  border-bottom: 1px solid var(--border);
+.role-db-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  background: #ffffff;
+  display: grid;
+  gap: 0.5rem;
+  width: 100%;
+  cursor: pointer;
 }
 
-.table-action {
-  text-align: center;
-  width: 140px;
+.role-db-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-start;
 }
 
-.edit-button {
+.role-db-header strong {
+  flex: 1 1 220px;
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.role-db-emojis {
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.role-db-emojis .add-role-btn {
+  margin-left: auto;
+}
+
+.role-db-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.role-db-actions button {
   border: none;
   background: transparent;
   font-size: 1.1rem;
   cursor: pointer;
+}
+
+.role-db-actions .edit-button {
   color: var(--accent-strong);
 }
 
-.delete-button {
-  border: none;
-  background: transparent;
-  font-size: 1.1rem;
-  cursor: pointer;
+.role-db-actions .delete-button {
   color: var(--bad);
+}
+
+.role-db-description {
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.role-order {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.role-order-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  background: #fcfcff;
+}
+
+.role-order-controls {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.drag-handle {
+  cursor: grab;
+  font-size: 1.1rem;
+  user-select: none;
+}
+
+.role-order-item.dragging {
+  opacity: 0.6;
 }
 
 .ghost {
